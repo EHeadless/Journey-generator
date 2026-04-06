@@ -1,3 +1,5 @@
+> This is a starter template. Copy it into your project folder, rename it to `CLAUDE.md`, and fill in the bracketed sections. Claude reads this file automatically at the start of every session.
+
 # [Your Name]'s PM Workspace — Claude Code Guide
 
 ## Who I am
