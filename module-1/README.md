@@ -5,54 +5,11 @@ Instructor: Hamza Farooq, Traversaal.ai
 
 ---
 
-## Setup
+## Before you start
 
-### Clone the repo
+Make sure Claude Code is installed and running. If you haven't done that yet, follow the [setup guide](../README.md#installation) in the root README first.
 
-```bash
-git clone https://github.com/hamzafarooq/claude-code-starter.git
-cd claude-code-starter/module-1
-```
-
-### Install Claude Code
-
-```bash
-npm install -g @anthropic/claude-code
-```
-
-No Node.js? Download the LTS version from [nodejs.org](https://nodejs.org), then run the command above.
-
-Check it worked:
-```bash
-claude --version
-```
-
-### Set up your API key
-
-1. Go to [console.anthropic.com](https://console.anthropic.com), create an account
-2. Go to API Keys and create a new key
-3. Copy it (starts with `sk-ant-...`)
-
-```bash
-export ANTHROPIC_API_KEY=sk-ant-your-key-here
-```
-
-To make it permanent:
-```bash
-echo 'export ANTHROPIC_API_KEY=sk-ant-your-key-here' >> ~/.zshrc
-source ~/.zshrc
-```
-
-Don't commit this key to GitHub.
-
-### Start Claude Code
-
-From inside the `module-1` folder:
-```bash
-claude
-```
-
-You're ready. Work through the assignments below.
+Once you see the Claude Code prompt in your terminal, you're ready. Work through the assignments below.
 
 ---
 

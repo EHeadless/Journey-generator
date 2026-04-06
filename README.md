@@ -9,12 +9,14 @@ Taught by Hamza Farooq, Founder at Traversaal.ai, UCLA Anderson, ex-Google.
 
 ## Get started
 
+1. Follow the [Installation](#installation) section below to get Claude Code running
+2. Clone this repo:
 ```bash
 git clone https://github.com/hamzafarooq/claude-code-starter.git
 cd claude-code-starter/module-1
+claude
 ```
-
-Open [module-1/README.md](module-1/README.md) and follow the setup guide from there.
+3. Open [module-1/README.md](module-1/README.md) for your first assignment
 
 ---
 
@@ -70,24 +72,33 @@ It's an AI assistant that runs inside your project folder and reads your actual 
 
 ## Installation
 
-Open your terminal and run:
-```
-npm install -g @anthropic/claude-code
-```
+This takes about 10 minutes. You'll do it once.
 
-No `npm`? Install Node.js from [nodejs.org](https://nodejs.org) (LTS version), then try again.
+### Step 1: Choose how to access Claude Code
 
-Check it worked:
-```
-claude --version
-```
+You have two options. Pick one:
 
-### API key setup
+**Option A — Claude Max subscription (recommended for most people)**
 
-1. Go to [console.anthropic.com](https://console.anthropic.com)
-2. Create an account, go to API Keys, create a key
-3. Copy it (starts with `sk-ant-...`)
+Claude Max ($100/month) gives you Claude Code with no usage limits and no API billing. Best if you're using Claude regularly throughout the day.
 
+1. Go to [claude.ai/upgrade](https://claude.ai/upgrade) and subscribe to **Max**
+2. Once subscribed, Claude Code is included — no API key needed
+3. When you first run `claude`, it will walk you through logging in with your Claude account
+
+**Option B — API key (pay as you go)**
+
+Better if you want to control costs or are already an API customer.
+
+1. Go to [console.anthropic.com](https://console.anthropic.com) and create an account
+
+2. Click **API Keys** in the left sidebar, then **Create Key**
+
+![Anthropic Console — API Keys page](https://developer.puter.com/assets/img/anthropic/api-key-page.webp)
+
+3. Copy the key — it starts with `sk-ant-...`. You won't see it again.
+
+4. Open your terminal and paste (replace with your actual key):
 ```
 export ANTHROPIC_API_KEY=sk-ant-your-key-here
 ```
@@ -98,7 +109,31 @@ echo 'export ANTHROPIC_API_KEY=sk-ant-your-key-here' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-Don't commit this key to GitHub.
+Never commit this key to GitHub.
+
+### Step 2: Install Claude Code
+
+If you don't have Node.js, install it from [nodejs.org](https://nodejs.org) (LTS version) first. Then open your terminal and run:
+
+```
+npm install -g @anthropic/claude-code
+```
+
+Check it worked:
+```
+claude --version
+```
+
+### Step 3: Start Claude Code
+
+```
+cd claude-code-starter/module-1
+claude
+```
+
+![Claude Code running in terminal](https://raw.githubusercontent.com/anthropics/claude-code/main/demo.gif)
+
+You're in. Head to [module-1/README.md](module-1/README.md) for your first assignment.
 
 ---
 
