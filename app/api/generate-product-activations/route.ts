@@ -71,12 +71,42 @@ export async function POST(request: NextRequest) {
 
     const circumstanceList = circumstances.map((c) => `- ${c.label}`).join('\n');
 
+    // Helper to format tech tools
+    const formatTools = (tools: Array<{value: string; purpose?: string}> | undefined) =>
+      tools?.map(t => t.purpose ? `${t.value} (${t.purpose})` : t.value).join(', ') || '';
+
+    // Build context sections
+    const techStackContext = input.techStack ? `
+Tech Stack:
+${input.techStack.cloudWarehouse?.length ? `- Cloud Warehouse: ${formatTools(input.techStack.cloudWarehouse)}` : ''}
+${input.techStack.dataStorage?.length ? `- Data Storage: ${formatTools(input.techStack.dataStorage)}` : ''}
+${input.techStack.crm?.length ? `- CRM: ${formatTools(input.techStack.crm)}` : ''}
+${input.techStack.cdp?.length ? `- CDP: ${formatTools(input.techStack.cdp)}` : ''}
+${input.techStack.cep?.length ? `- CEP: ${formatTools(input.techStack.cep)}` : ''}
+${input.techStack.dxp?.length ? `- DXP: ${formatTools(input.techStack.dxp)}` : ''}
+${input.techStack.aiModels?.length ? `- AI Models: ${formatTools(input.techStack.aiModels)}` : ''}
+${input.techStack.aiPlatform?.length ? `- AI Platform: ${formatTools(input.techStack.aiPlatform)}` : ''}`.trim() : '';
+
+    const productsContext = input.products?.length ? `
+Products/Channels:
+${input.products.map(p => `- ${p.name}: ${p.description}`).join('\n')}` : '';
+
+    const personasContext = input.personas?.length ? `
+Target Personas: ${input.personas.map(p => p.label).join(', ')}` : '';
+
+    const painPointsContext = input.painPoints ? `
+Known Pain Points:
+${input.painPoints}` : '';
+
     const prompt = `Generate product features for this demand space and circumstances:
 
 Industry: ${input.industry}
-Experience Type: ${input.experienceType}
+Experience Types: ${input.experienceTypes?.join(', ') || 'Not specified'}
 Business Description: ${input.businessDescription}
-${input.techStack ? `Tech Stack: ${input.techStack}` : ''}
+${techStackContext}
+${productsContext}
+${personasContext}
+${painPointsContext}
 
 Demand Space: ${demandSpace.label}
 Motivation: ${demandSpace.jobToBeDone}

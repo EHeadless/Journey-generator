@@ -47,15 +47,47 @@ export interface Circumstance {
   order: number;
 }
 
+// Tech stack tool with purpose
+export interface TechTool {
+  id: string;
+  value: string;     // Tool name
+  purpose?: string;  // What this tool is used for
+}
+
+// Tech stack structured input - each field supports multiple selections
+export interface TechStack {
+  cloudWarehouse?: TechTool[];     // e.g., Snowflake, BigQuery, Redshift, Databricks
+  dataStorage?: TechTool[];        // e.g., AWS S3, Azure Blob, PostgreSQL, MongoDB
+  crm?: TechTool[];                // e.g., Salesforce, HubSpot, Microsoft Dynamics
+  cdp?: TechTool[];                // e.g., Segment, mParticle, Tealium, Adobe CDP
+  cep?: TechTool[];                // e.g., Braze, Emarsys, SFMC, Iterable
+  dxp?: TechTool[];                // e.g., Optimizely, Adobe Experience Manager, Sitecore
+  aiModels?: TechTool[];           // e.g., GPT-4, Claude, Gemini, Llama
+  aiPlatform?: TechTool[];         // e.g., Azure AI Foundry, AWS Bedrock, Vertex AI
+}
+
+// Product/channel with description
+export interface Product {
+  id: string;
+  name: string;        // e.g., "Mobile App", "Website", "Kiosk"
+  description: string; // What this product/channel does
+}
+
+// Target persona
+export interface Persona {
+  id: string;
+  label: string;       // e.g., "Budget-conscious families"
+}
+
 export interface ModelInput {
-  experienceType: ExperienceType;
+  experienceTypes: ExperienceType[];  // Now supports multiple selection
   industry: string;
   businessDescription: string;
-  techStack?: string;
+  techStack?: TechStack;
+  products?: Product[];
   channels?: string[];
-  customerSegments?: string;
-  painPoints?: string;
-  personaContext?: string;
+  personas?: Persona[];
+  painPoints?: string;  // Now a textarea (multi-line)
 }
 
 // Activation types - what to do for each Demand Space × Dimension Value combination

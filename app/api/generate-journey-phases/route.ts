@@ -29,7 +29,7 @@ Example for a theme park:
 export async function POST(request: NextRequest) {
   try {
     const body: ModelInput & { apiKey?: string } = await request.json();
-    const { industry, businessDescription, experienceType, apiKey } = body;
+    const { industry, businessDescription, experienceTypes, techStack, products, personas, painPoints, apiKey } = body;
 
     if (!apiKey) {
       return NextResponse.json(
@@ -38,18 +38,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!industry || !businessDescription || !experienceType) {
+    if (!experienceTypes || experienceTypes.length === 0) {
       return NextResponse.json(
-        { error: 'Missing required fields: industry, businessDescription, experienceType' },
+        { error: 'At least one experience type is required' },
         { status: 400 }
       );
     }
 
+    // Helper to format tech tools
+    const formatTools = (tools: Array<{value: string; purpose?: string}> | undefined) =>
+      tools?.map(t => t.purpose ? `${t.value} (${t.purpose})` : t.value).join(', ') || '';
+
+    // Build context sections
+    const techStackContext = techStack ? `
+Tech Stack:
+${techStack.cloudWarehouse?.length ? `- Cloud Warehouse: ${formatTools(techStack.cloudWarehouse)}` : ''}
+${techStack.dataStorage?.length ? `- Data Storage: ${formatTools(techStack.dataStorage)}` : ''}
+${techStack.crm?.length ? `- CRM: ${formatTools(techStack.crm)}` : ''}
+${techStack.cdp?.length ? `- CDP: ${formatTools(techStack.cdp)}` : ''}
+${techStack.cep?.length ? `- CEP: ${formatTools(techStack.cep)}` : ''}
+${techStack.dxp?.length ? `- DXP: ${formatTools(techStack.dxp)}` : ''}
+${techStack.aiModels?.length ? `- AI Models: ${formatTools(techStack.aiModels)}` : ''}
+${techStack.aiPlatform?.length ? `- AI Platform: ${formatTools(techStack.aiPlatform)}` : ''}`.trim() : '';
+
+    const productsContext = products?.length ? `
+Products/Channels:
+${products.map(p => `- ${p.name}: ${p.description}`).join('\n')}` : '';
+
+    const personasContext = personas?.length ? `
+Target Personas: ${personas.map(p => p.label).join(', ')}` : '';
+
+    const painPointsContext = painPoints ? `
+Known Pain Points:
+${painPoints}` : '';
+
     const prompt = `Generate journey phases for this business:
 
-Industry: ${industry}
-Experience Type: ${experienceType}
-Business Description: ${businessDescription}
+Industry: ${industry || 'Not specified'}
+Experience Types: ${experienceTypes.join(', ')}
+Business Description: ${businessDescription || 'Not specified'}
+${techStackContext}
+${productsContext}
+${personasContext}
+${painPointsContext}
 
 Generate 4-7 sequential journey phases that represent THIS business's specific customer lifecycle. Remember:
 - These are stages ALL customers move through, regardless of their motivation

@@ -242,11 +242,13 @@ export default function Workspace() {
   const totalDimensions = model.dimensions.length;
   const totalValues = model.dimensions.reduce((sum, d) => sum + d.values.length, 0);
 
-  const experienceConfig = {
+  const experienceConfigs = {
     marketing: { color: '#2e5bff', label: 'Marketing' },
     product: { color: '#4ade80', label: 'Product' },
     service: { color: '#a855f7', label: 'Service' },
-  }[model.input.experienceType];
+  };
+
+  const selectedExperienceTypes = model.input.experienceTypes || [model.input.experienceType].filter(Boolean);
 
   return (
     <div className="min-h-screen bg-[#131313]">
@@ -264,13 +266,19 @@ export default function Workspace() {
             {model.input.industry}
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <span
-            className="text-xs uppercase tracking-[0.15em] font-bold px-3 py-1 rounded-full"
-            style={{ color: experienceConfig.color, backgroundColor: `${experienceConfig.color}20` }}
-          >
-            {experienceConfig.label}
-          </span>
+        <div className="flex items-center gap-2">
+          {selectedExperienceTypes.map((type) => {
+            const config = experienceConfigs[type];
+            return config ? (
+              <span
+                key={type}
+                className="text-xs uppercase tracking-[0.15em] font-bold px-3 py-1 rounded-full"
+                style={{ color: config.color, backgroundColor: `${config.color}20` }}
+              >
+                {config.label}
+              </span>
+            ) : null;
+          })}
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
