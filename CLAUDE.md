@@ -19,36 +19,35 @@ Demand Space Generation — a behavioral strategy engine that takes a client bri
 4. User clicks Generate — system auto-cascades:
    - Journey phases generated first
    - Demand spaces generated per phase
-   - Dimensions generated per demand space
+   - **Exactly 5 Circumstances** generated per demand space (composite across Knowledge / Intent / Composition / Constraint / Moment, with narrative + Struggle + Progress)
 5. All cards auto-expand when generation completes
-6. Activation outputs depend on experience type:
+6. Activation outputs depend on experience type (*currently deferred — being re-designed around the new Circumstance entity*):
 
-| Experience | Output per dimension value | Artifact |
-|------------|---------------------------|----------|
-| **Product** | Features → Jira-ready user stories | Prioritized feature backlog by demand space × dimension |
+| Experience | Output per Circumstance | Artifact |
+|------------|-------------------------|----------|
+| **Product** | Features → Jira-ready user stories | Prioritized feature backlog by demand space × circumstance |
 | **Marketing** | Behavior states → 6 CRM levers (message depth, urgency, channel, tone, offers, cadence) | CRM journey buildable in Emarsys/Braze/SFMC |
-| **Service** | Features → tools, knowledge articles, C360 signals, handoff rules | Dimension catalog with agent specifications |
+| **Service** | Features → tools, knowledge articles, C360 signals, handoff rules | Circumstance catalog with agent specifications |
 
 ## Key definitions
 - **Demand space** = Human life motivation (JTBD), NOT a product feature. Must pass the "remove the product" test. Example: "Live comfortably in my community without friction" — not "Track my maintenance request."
-- **Dimension** = A characteristic axis that modifies how we serve a demand space. Organized by Universal Dimension Taxonomy (5 types).
-- **Dimension value** = A specific position on a dimension. Example: dimension "Budget Level" → values "Budget-conscious", "Mid-range", "Premium".
+- **Circumstance** = A composite position across all 5 universal axes (Knowledge, Intent, Composition, Constraint, Moment) that deconstructs a demand space's JTBD into a specific, real-life situation. Each demand space has exactly 5 distinct Circumstances. Each one carries a JTBD narrative ("When I am [context], I want to [action], so that [outcome]"), a **Struggle** (what pushes them away from the current habit), and a **Progress** (what they're reaching for).
 - **Behavior state** (marketing only) = How the person is acting now — engagement level + cognitive/emotional state — drives the 6 CRM activation levers.
-- **Feature** (product/service) = AI or system capability that resolves a demand space for a specific dimension value. Maps to backend tools and generates user stories.
+- **Feature** (product/service) = AI or system capability that resolves a demand space for a specific Circumstance. Maps to backend tools and generates user stories.
 - **Journey phase** = Business lifecycle stage. Not a demand space. The shared timeline customers move through. Example: Search → Onboarding → In-Life.
 
-## Universal Dimension Taxonomy
-Five dimension types that modify how we serve any demand space:
+## Universal Axis Taxonomy
+Every Circumstance picks one value on each of these 5 axes:
 
-| Type | What it captures | Examples |
+| Axis | What it captures | Examples |
 |------|------------------|----------|
 | **Knowledge** | What the customer knows | Expert vs Novice, Familiar vs First-time |
-| **Intent** | Why they're here now | Browsing vs Buying, Researching vs Ready |
-| **Composition** | Who they're with/for | Solo vs Group, Self vs Gift, Family composition |
-| **Constraint** | Limitations they face | Budget level, Time pressure, Accessibility needs |
-| **Moment** | Situational context | Device type, Location, Time of day, Emotional state |
+| **Intent** | Why they're here now / the stakes | Routine vs High-stakes, Browsing vs Buying |
+| **Composition** | Who they're with or for | Solo, Couple, Family, Group, Corporate |
+| **Constraint** | What's limiting them | Time, Space, Budget, Accessibility, Language |
+| **Moment** | Situational / temporal / life context | "Long-haul business travel", "First week postpartum", "Connecting after a delayed flight" |
 
-**Formula:** Demand Space × Dimension Value = Specific Activation
+**Formula:** Demand Space → 5 Circumstances (each a tuple across the 5 axes) → Activations (deferred — being re-designed)
 
 ## Reference engagements (source of truth)
 Read these before generating output:
@@ -77,7 +76,7 @@ Read these before generating output:
 ## What Claude should NOT do
 - Generate demand spaces that describe product features — they must be human life motivations
 - Use "When I / I want / So I can" format for demand spaces — use short evocative labels
-- Confuse dimensions with demand spaces — dimension is a modifying characteristic (budget level, expertise), demand space is the underlying motivation
+- Confuse circumstances with demand spaces — a Circumstance is a specific real-life situation (composite across 5 axes); a demand space is the underlying life motivation
 - Treat this as CRM-only — it spans marketing, product, and service
 - Build features solvable by prompting Claude directly — this is a structured workspace, not a chat
 - Generate vague impacts — every output must be specific enough for implementation teams to act on
@@ -105,18 +104,18 @@ Next.js 14 (App Router), React, TypeScript, Tailwind CSS, Zustand (state), OpenA
 │   └── api/
 │       ├── generate-journey-phases/route.ts
 │       ├── generate-demand-spaces/route.ts
-│       ├── generate-dimensions/route.ts      # Universal Dimension Taxonomy
-│       ├── generate-marketing-activations/route.ts
-│       ├── generate-product-activations/route.ts
-│       └── generate-service-activations/route.ts
+│       ├── generate-circumstances/route.ts   # 5 Circumstances per demand space (Knowledge/Intent/Composition/Constraint/Moment + narrative + struggle/progress)
+│       ├── generate-marketing-activations/route.ts  # deferred — being re-designed
+│       ├── generate-product-activations/route.ts    # deferred — being re-designed
+│       └── generate-service-activations/route.ts    # deferred — being re-designed
 ├── components/
 │   ├── InputForm.tsx
 │   ├── JourneyPhaseCard.tsx
-│   ├── DemandSpaceCard.tsx                   # Shows dimensions + values
+│   ├── DemandSpaceCard.tsx                   # Shows 5 Circumstances (axis chips + narrative + Struggle/Progress)
 │   └── Toast.tsx
 ├── lib/
-│   ├── store.ts                              # Zustand store with dimension actions
-│   ├── types.ts                              # Dimension, DimensionValue types
+│   ├── store.ts                              # Zustand store with circumstance actions
+│   ├── types.ts                              # Circumstance type (5 axes + narrative + struggle/progress)
 │   ├── openai.ts                             # API key passed as parameter
 │   └── utils.ts
 ├── docs/
@@ -130,4 +129,4 @@ Next.js 14 (App Router), React, TypeScript, Tailwind CSS, Zustand (state), OpenA
 - **API key handling:** OpenAI key entered via header input, stored in localStorage, passed to API routes in request body — never stored in code/env files
 - **Auto-cascade generation:** useEffect hooks watch for new entities and trigger next generation step automatically
 - **Controlled expansion:** Parent component manages card expansion state; all cards auto-expand when generation completes
-- **Stats bar:** Live-updating counts for phases, demand spaces, dimensions, and values with loading spinner during generation
+- **Stats bar:** Live-updating counts for phases, demand spaces, and circumstances with loading spinner during generation

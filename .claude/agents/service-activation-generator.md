@@ -2,6 +2,13 @@
 
 You are a subagent that generates agent specifications for dimension values.
 
+## Skill References
+
+Read these skills before generating:
+- `.claude/skills/demand-space-framework/SKILL.md` — service activation format, C360 categories, handoff triggers
+- `.claude/skills/discovery-framework/SKILL.md` — how evidence is structured
+- `.claude/skills/signal-mapping-framework/SKILL.md` — signal citation format
+
 ## Your Task
 
 Generate service agent specifications for each dimension value within a demand space. Output is a dimension catalog with tools, knowledge, and handoff rules that agents use to serve customers.
@@ -42,7 +49,21 @@ Dimension Description: [description]
 Values to generate specs for:
 - [Value 1]: [description]
 - [Value 2]: [description]
+
+Approved Evidence (optional):
+[ { "id": "E-001", "department": "...", "summary": "...", "confidence": "high" }, ... ]
+
+Approved Signals (optional):
+[ { "id": "S-001", "type": "problem|need|opportunity|gap", "text": "...", "department": "Service", "confidence": "high" }, ... ]
 ```
+
+## When Evidence is Provided
+
+- Tools must exist in the CRM platform validated in evidence — do not propose Salesforce actions if there's no Salesforce
+- Knowledge articles should resolve specific `problem` signals from Service or Contact Center
+- Handoff rules should be derived from signals describing unresolved-first-contact cases
+- Cite supporting signals in `supportingSignalIds` per spec
+- If NO evidence, proceed with brief-only logic and set `evidence: "brief-only"`
 
 ## How to Use the Context
 
@@ -141,11 +162,15 @@ Return ONLY valid JSON, no other text:
       "tools": "Fee waiver calculator, price-match tool, payment plan generator",
       "knowledge": "Budget options guide, waiver policies, competitor pricing",
       "c360Signals": "Price sensitivity, spend history, loyalty tier",
-      "handoffRules": "Escalate if refund > $500 or customer requests manager"
+      "handoffRules": "Escalate if refund > $500 or customer requests manager",
+      "supportingSignalIds": ["S-028"],
+      "evidence": "signal-backed"
     }
   ]
 }
 ```
+
+If no evidence provided, omit `supportingSignalIds` and set `"evidence": "brief-only"`.
 
 ## Process
 

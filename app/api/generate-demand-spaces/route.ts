@@ -19,11 +19,20 @@ Every demand space must pass this test: If you remove this company's product ent
 ❌ BAD: "I want the app to enhance my visit" — fails the test, references product
 ❌ BAD: "Seamless booking experience" — this is a UX requirement, not a motivation
 
+PHASE-SPECIFIC GENERATION - CRITICAL:
+Journey phases represent different moments in the customer lifecycle with DIFFERENT motivations active.
+- "Discover/Search" phase → Information-gathering, exploration, possibility mapping
+- "Consider/Compare" phase → Evaluation, trade-off analysis, decision criteria
+- "Purchase/Book" phase → Commitment, transaction confidence, logistics
+- "Experience/Use" phase → In-the-moment needs, real-time problem solving
+- "Reflect/Share" phase → Memory preservation, social signaling, future planning
+
 RULES:
 1. Labels must be 2-4 evocative words, NOT "I want to..." format
 2. Job to Be Done follows: "When I [situation], I want to [action], so that [outcome]"
 3. Each demand space must be distinct — no overlapping motivations
-4. Be specific to this journey phase — different phases surface different motivations`;
+4. Be HIGHLY specific to this journey phase — the phase description tells you what motivations to focus on
+5. Do NOT generate generic motivations that would apply to multiple phases`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,6 +43,13 @@ export async function POST(request: NextRequest) {
     } = await request.json();
 
     const { input, journeyPhase, apiKey } = body;
+
+    // Debug logging
+    console.log('Generating demand spaces for phase:', {
+      label: journeyPhase.label,
+      description: journeyPhase.description,
+      trigger: journeyPhase.trigger,
+    });
 
     if (!apiKey) {
       return NextResponse.json(
@@ -72,8 +88,16 @@ ${input.products.map(p => `- ${p.name}: ${p.description}`).join('\n')}` : '';
     const personasContext = input.personas?.length ? `
 Target Personas: ${input.personas.map(p => p.label).join(', ')}` : '';
 
-    const prompt = `Generate demand spaces for this journey phase:
+    const prompt = `Generate demand spaces for this specific journey phase:
 
+JOURNEY PHASE: ${journeyPhase.label}
+${journeyPhase.description ? `WHAT HAPPENS IN THIS PHASE: ${journeyPhase.description}` : ''}
+${journeyPhase.trigger ? `PHASE ENTRY TRIGGER: ${journeyPhase.trigger}` : ''}
+
+CRITICAL: The demand spaces you generate MUST be specific to what customers are doing in "${journeyPhase.label}" phase.
+${journeyPhase.description ? `Focus on the motivations that are active when: ${journeyPhase.description}` : ''}
+
+Business Context:
 Industry: ${input.industry}
 Experience Types: ${input.experienceTypes?.join(', ') || 'Not specified'}
 Business Description: ${input.businessDescription}
@@ -82,18 +106,23 @@ ${productsContext}
 ${personasContext}
 ${input.painPoints ? `Known Pain Points:\n${input.painPoints}` : ''}
 
-Journey Phase: ${journeyPhase.label}
-Phase Description: ${journeyPhase.description}
-Phase Trigger: ${journeyPhase.trigger}
+Generate 8-12 demand spaces representing the HUMAN MOTIVATIONS that are SPECIFIC TO THIS PHASE.
 
-Generate 8-12 demand spaces representing the HUMAN MOTIVATIONS that bring customers into this specific journey phase.
+PHASE-SPECIFIC REQUIREMENTS:
+- Each demand space must reflect what customers are trying to accomplish during "${journeyPhase.label}"
+- Different phases should surface DIFFERENT motivations
+- If this is "Discover/Search", focus on exploration and information-gathering motivations
+- If this is "Consider/Compare", focus on evaluation and decision-making motivations
+- If this is "Purchase", focus on transaction and commitment motivations
+- Etc.
 
 Remember the "remove the product" test: Every motivation must exist even if this company's product doesn't exist.
 
 DO NOT generate:
 - Product features ("I want the app to...")
 - UX requirements ("Seamless experience")
-- Use cases ("Book a ticket", "Check my balance")`;
+- Use cases ("Book a ticket", "Check my balance")
+- Generic motivations that apply to ALL phases (make them phase-specific)`;
 
     const demandSpaces = await generateWithRetry<GenerateDemandSpacesResponse['demandSpaces']>(
       prompt,

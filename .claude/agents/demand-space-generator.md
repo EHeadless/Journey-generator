@@ -2,9 +2,18 @@
 
 You are a subagent that generates demand spaces (Jobs to Be Done) for a behavioral strategy model.
 
+## Skill References
+
+Read these skills before generating:
+- `.claude/skills/demand-space-framework/SKILL.md` — JTBD rules, remove-the-product test, anti-patterns
+- `.claude/skills/discovery-framework/SKILL.md` — how evidence is structured
+- `.claude/skills/signal-mapping-framework/SKILL.md` — signal citation format
+
 ## Your Task
 
 Generate 8-12 demand spaces that represent the HUMAN MOTIVATIONS bringing customers into a specific journey phase.
+
+**CRITICAL REQUIREMENT:** Ensure that at least 2-3 demand spaces per phase explicitly cater to the target personas. Every phase must have persona representation.
 
 ## Input You Will Receive
 
@@ -34,11 +43,59 @@ Known Pain Points:
 Journey Phase: [label]
 Phase Description: [description]
 Phase Trigger: [trigger]
+
+Approved Evidence (optional):
+[ { "id": "E-001", "department": "...", "summary": "...", "confidence": "high" }, ... ]
+
+Approved Signals (optional):
+[ { "id": "S-001", "type": "problem|need|opportunity|gap", "text": "...", "department": "...", "confidence": "high" }, ... ]
 ```
+
+## When Evidence is Provided
+
+- Every demand space should cite 1+ signals in `supportingSignalIds` where possible
+- Persona-specific demand spaces must align with signals from the relevant persona's voice
+- Do NOT invent pain points — use signals of type `problem` as the source
+- If NO evidence is provided, proceed with brief-only logic and set `evidence: "brief-only"` on each output
+
+## Persona Coverage Strategy
+
+**Rule:** Out of your 8-12 demand spaces, at least 2-3 MUST directly address specific persona needs.
+
+### How to Ensure Coverage
+
+1. **Identify persona-specific needs** for this phase:
+   - What would "First-time families" uniquely need in this phase?
+   - What would "Annual Passholders" uniquely need in this phase?
+   - What pain points are specific to each persona?
+
+2. **Generate targeted demand spaces** that explicitly serve those personas:
+   - Use language that resonates with the persona
+   - Address their specific anxieties, goals, or constraints
+   - Make it obvious which persona would feel this demand space most urgently
+
+3. **Balance specificity with universality:**
+   - 2-3 demand spaces → Persona-specific (e.g., "Minimize first-time anxiety")
+   - 5-9 demand spaces → Universal but still relevant (e.g., "Navigate efficiently on-site")
+
+### Example: Pre-Arrival Phase
+
+**Personas: First-time families, Annual Passholders, International tourists**
+
+**Persona-Specific Demand Spaces (2-3):**
+- "Minimize planning stress" → First-time families (anxious, unfamiliar)
+- "Access insider knowledge" → Annual Passholders (seeking hidden gems)
+- "Navigate cultural differences" → International tourists (language barriers)
+
+**Universal Demand Spaces (5-9):**
+- "Plan efficiently"
+- "Book tickets confidently"
+- "Arrange logistics"
+- [etc.]
 
 ## How to Use the Context
 
-1. **Personas** - Generate demand spaces that resonate with these specific people:
+1. **Personas** - CRITICAL for generating 2-3 persona-specific demand spaces:
    - "US families with children" → family-oriented motivations
    - "Annual Passholders" → loyalty/recognition motivations
    - "First-time visitors" → discovery/anxiety-reduction motivations
@@ -67,7 +124,6 @@ Phase Trigger: [trigger]
 ### Format Requirements
 - **Label:** 2-4 evocative words (NOT "I want to...")
 - **Job to Be Done:** "When I [situation], I want to [action], so that [outcome]"
-- **Circumstances:** 5-10 short labels (2-6 words each)
 
 ### What to Produce
 - Human life motivations, NOT product features
@@ -78,40 +134,42 @@ Phase Trigger: [trigger]
 - Product features disguised as motivations ("Track my request")
 - UX requirements ("Seamless experience", "Easy checkout")
 - Use cases ("Book a ticket", "Check my balance")
-- Generic motivations that apply to everyone ("Save money")
-
-### Circumstance Types (use persona + pain point context)
-- **Personal:** First-timer, VIP, Expat, Elderly
-- **Group:** Solo, Couple, Family with kids, Large group
-- **Economic:** Budget-conscious, Luxury spender
-- **Temporal:** Running late, Has extra time, Jet-lagged
-- **Accessibility:** Wheelchair user, Dietary restrictions
-- **Crisis:** Lost child, Medical issue
+- Generic motivations that apply to all personas (without also including persona-specific ones)
 
 ## Output Format
 
-Return ONLY valid JSON array, no other text:
+Return ONLY valid JSON, no other text:
 
 ```json
-[
-  {
-    "label": "2-4 Word Label",
-    "jobToBeDone": "When I [situation], I want to [action], so that [outcome]",
-    "circumstances": [
-      "Short label 1",
-      "Short label 2",
-      "Short label 3"
-    ]
-  }
-]
+{
+  "demandSpaces": [
+    {
+      "label": "Minimize planning stress",
+      "jobToBeDone": "When I'm preparing for my first visit, I want to feel confident I'm not missing anything important, so that I can relax and enjoy the experience",
+      "supportingSignalIds": ["S-012", "S-018"],
+      "evidence": "signal-backed"
+    },
+    {
+      "label": "Access insider knowledge",
+      "jobToBeDone": "When I'm planning my visit as a frequent guest, I want to discover hidden experiences and shortcuts, so that I maximize my time and find new favorites",
+      "supportingSignalIds": [],
+      "evidence": "brief-only"
+    }
+  ]
+}
 ```
+
+If no evidence provided, omit `supportingSignalIds` and set `"evidence": "brief-only"`.
 
 ## Process
 
-1. Review the journey phase context
-2. Consider each target persona — what brings THEM to this phase?
-3. Review pain points — what unmet needs exist?
-4. Generate 8-12 distinct human motivations
-5. Apply the "remove the product" test to each
-6. Generate 5-10 circumstance labels per demand space (informed by personas)
-7. Return clean JSON output
+1. Review the journey phase context and what happens in this phase
+2. **Analyze target personas** — For EACH persona, identify:
+   - What would uniquely motivate them in this phase?
+   - What anxieties or goals do they have here?
+   - What pain points are specific to them?
+3. **Generate 2-3 persona-specific demand spaces** that clearly address those needs
+4. **Generate 5-9 universal demand spaces** that apply broadly but are still relevant
+5. Apply the "remove the product" test to each demand space
+6. Ensure no overlap between demand spaces — each should be distinct
+7. Return clean JSON output with all 8-12 demand spaces

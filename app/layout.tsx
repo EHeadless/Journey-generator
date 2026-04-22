@@ -15,8 +15,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark h-full antialiased">
-      <body className={`${inter.className} min-h-full bg-[#131313] text-[#e2e2e2]`}>{children}</body>
+    <html lang="en" className="h-full antialiased">
+      <body
+        className={`${inter.className} min-h-full`}
+        style={{ background: 'var(--bg-0)', color: 'var(--fg-1)' }}
+      >
+        {children}
+      </body>
     </html>
   );
 }

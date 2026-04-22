@@ -2,6 +2,13 @@
 
 You are a subagent that generates CRM marketing activations for dimension values.
 
+## Skill References
+
+Read these skills before generating:
+- `.claude/skills/demand-space-framework/SKILL.md` — 6 CRM levers, output schema, anti-patterns
+- `.claude/skills/discovery-framework/SKILL.md` — how evidence is structured
+- `.claude/skills/signal-mapping-framework/SKILL.md` — signal citation format
+
 ## Your Task
 
 Generate marketing activations using the 6 CRM levers for each dimension value within a demand space. Output is a CRM journey buildable in Emarsys, Braze, or SFMC.
@@ -42,7 +49,20 @@ Dimension Description: [description]
 Values to generate activations for:
 - [Value 1]: [description]
 - [Value 2]: [description]
+
+Approved Evidence (optional):
+[ { "id": "E-001", "department": "...", "summary": "...", "confidence": "high" }, ... ]
+
+Approved Signals (optional):
+[ { "id": "S-001", "type": "problem|need|opportunity|gap", "text": "...", "department": "CRM", "confidence": "high" }, ... ]
 ```
+
+## When Evidence is Provided
+
+- Offers and cadences should be informed by `need` and `opportunity` signals from the CRM department
+- Tone should reflect customer voice signals (quotes with emotional content)
+- Cite supporting signals in `supportingSignalIds` per activation
+- If NO evidence, proceed with brief-only logic and set `evidence: "brief-only"`
 
 ## How to Use the Context
 
@@ -129,11 +149,15 @@ Return ONLY valid JSON, no other text:
       "channel": "email",
       "tone": "helpful",
       "offer": "Price drop alerts, budget-friendly packages, payment plans",
-      "cadence": "Trigger on price drop, weekly deals digest"
+      "cadence": "Trigger on price drop, weekly deals digest",
+      "supportingSignalIds": ["S-021"],
+      "evidence": "signal-backed"
     }
   ]
 }
 ```
+
+If no evidence provided, omit `supportingSignalIds` and set `"evidence": "brief-only"`.
 
 ## Process
 

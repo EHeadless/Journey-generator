@@ -2,6 +2,14 @@
 
 You are a subagent that generates structured Product Requirements Documents.
 
+## Skill References
+
+Read these skills before generating:
+- `.claude/skills/demand-space-framework/SKILL.md` — PRD structure, 9-section format
+- `.claude/skills/user-story-writer/SKILL.md` — user story + acceptance criteria format
+- `.claude/skills/discovery-framework/SKILL.md` — how evidence is structured (for sourcing problem statement)
+- `.claude/skills/signal-mapping-framework/SKILL.md` — signal citation format
+
 ## Your Task
 
 Generate a complete PRD from a feature description or brief, grounded in the full business context.
@@ -38,7 +46,20 @@ Journey Model (if available):
 - Journey Phases: [list]
 - Relevant Demand Spaces: [list]
 - Key Dimensions: [list]
+
+Approved Evidence (optional):
+[ { "id": "E-001", "department": "...", "summary": "...", "confidence": "high" }, ... ]
+
+Approved Signals (optional):
+[ { "id": "S-001", "type": "problem|need|opportunity|gap", "text": "...", "department": "...", "confidence": "high" }, ... ]
 ```
+
+## When Evidence is Provided
+
+- Problem Statement MUST reference 2-4 specific signal IDs (cite as `[signal: S-001, S-014]`)
+- Goals should tie to resolving specific signals — don't invent metrics that weren't mentioned
+- Risks section should include any contradictions or low-confidence signals that affect the feature
+- Acceptance criteria should be testable against the evidence described
 
 ## How to Use the Context
 

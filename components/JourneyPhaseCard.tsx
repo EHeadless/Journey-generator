@@ -9,18 +9,18 @@ interface Props {
   phase: JourneyPhase;
   demandSpaces: DemandSpace[];
   onGenerateDemandSpaces: () => void;
-  onGenerateDimensions: (demandSpaceId: string) => void;
+  onGenerateCircumstances: (demandSpaceId: string) => void;
   isGenerating: boolean;
-  isGeneratingDimensions: Record<string, boolean>;
+  isGeneratingCircumstances: Record<string, boolean>;
 }
 
 export default function JourneyPhaseCard({
   phase,
   demandSpaces,
   onGenerateDemandSpaces,
-  onGenerateDimensions,
+  onGenerateCircumstances,
   isGenerating,
-  isGeneratingDimensions,
+  isGeneratingCircumstances,
 }: Props) {
   const { updateJourneyPhase, deleteJourneyPhase, addDemandSpace } = useStore();
   const [isExpanded, setIsExpanded] = useState(true);
@@ -176,8 +176,8 @@ export default function JourneyPhaseCard({
                     key={ds.id}
                     demandSpace={ds}
                     journeyPhase={phase}
-                    onGenerateDimensions={() => onGenerateDimensions(ds.id)}
-                    isGeneratingDimensions={isGeneratingDimensions[ds.id]}
+                    onGenerateCircumstances={() => onGenerateCircumstances(ds.id)}
+                    isGeneratingCircumstances={isGeneratingCircumstances[ds.id]}
                   />
                 ))}
             </div>

@@ -41,6 +41,8 @@ export async function generateWithRetry<T>(
       // Check for common wrapper keys
       if (parsed.journeyPhases) return parsed.journeyPhases as T;
       if (parsed.demandSpaces) return parsed.demandSpaces as T;
+      if (parsed.dimensions) return parsed.dimensions as T;
+      if (parsed.personaMappings) return parsed as T; // Return full object for persona mappings
       if (parsed.categories) return parsed.categories as T;
       if (parsed.circumstances) return parsed.circumstances as T;
       if (parsed.activations) return parsed.activations as T;

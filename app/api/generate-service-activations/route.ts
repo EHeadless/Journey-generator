@@ -69,7 +69,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const circumstanceList = circumstances.map((c) => `- ${c.label}`).join('\n');
+    // NOTE: activation generation is pending migration to the new Circumstance
+    // shape. Using `moment` as a label substitute; UI is disabled.
+    const circumstanceList = circumstances.map((c) => `- ${c.moment}`).join('\n');
 
     // Helper to format tech tools
     const formatTools = (tools: Array<{value: string; purpose?: string}> | undefined) =>

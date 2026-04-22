@@ -464,7 +464,10 @@ export default function InputForm() {
 
     const modelId = createModel(input);
 
-    // Auto-generate journey phases
+    // Auto-generate journey phases against the default journey seeded by
+    // createModel. (This legacy InputForm isn't imported from anywhere in
+    // the current app; kept so the file still compiles under the
+    // multi-journey data model.)
     try {
       const response = await fetch('/api/generate-journey-phases', {
         method: 'POST',
@@ -474,7 +477,10 @@ export default function InputForm() {
 
       if (response.ok) {
         const data = await response.json();
-        setJourneyPhases(data.journeyPhases);
+        const defaultJourneyId = useStore.getState().model?.journeys?.[0]?.id;
+        if (defaultJourneyId) {
+          setJourneyPhases(defaultJourneyId, data.journeyPhases);
+        }
       }
     } catch (err) {
       console.error('Failed to auto-generate journey phases:', err);

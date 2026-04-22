@@ -7,18 +7,35 @@ description: The behavioral strategy framework — rules, taxonomy, and format s
 
 This is the stable knowledge that governs all generation. Subagents reference these rules; they don't redefine them.
 
+## Sister Skills (read together)
+
+This skill is one of three. They work as a set:
+
+1. **demand-space-framework** (this file) — the taxonomy, formats, and anti-patterns for generation
+2. **discovery-framework** — how we gather evidence from clients before generating (interview structure, department angles, evidence types)
+3. **signal-mapping-framework** — how evidence becomes Problems / Needs / Opportunities / Gaps, and when to map vs. propose
+
+The consultancy workflow is:
+```
+Brief → Discovery Plan → Discovery Capture → Signal Extraction → Review & Approve
+     → Generate Landscape (this skill governs here)
+```
+
+Generators read approved evidence + candidate signals as input. They do NOT invent context — everything traces back to evidence from discovery.
+
 ---
 
 ## Core Concepts
 
 ### The Personalization Formula
 ```
-Demand Space × Dimension Value = Specific Activation
+Demand Space → 5 Circumstances (one per axis tuple) → Activation
 ```
+Each Circumstance is a composite position across all 5 universal axes (Knowledge / Intent / Composition / Constraint / Moment) plus a JTBD narrative and Struggle/Progress forces.
 
 ### Hierarchy
 ```
-Journey Phase → Demand Space → Dimension → Dimension Value → Activation
+Journey Phase → Demand Space → Circumstance (exactly 5) → Activation [deferred]
 ```
 
 ---
@@ -58,7 +75,7 @@ Journey Phase → Demand Space → Dimension → Dimension Value → Activation
 ### Format
 - **Label:** 2-4 evocative words (NOT "I want to...")
 - **Job to Be Done:** "When I [situation], I want to [action], so that [outcome]"
-- **Circumstances:** 5-10 short labels (2-6 words) describing situational factors
+- **Circumstances:** Generated separately — exactly 5 per demand space, each a composite across the 5 axes (see section 3).
 
 ### Rules
 - 8-12 demand spaces per journey phase
@@ -69,14 +86,14 @@ Journey Phase → Demand Space → Dimension → Dimension Value → Activation
 
 ---
 
-## 3. Universal Dimension Taxonomy
+## 3. Universal Axis Taxonomy (for Circumstances)
 
-Five dimension types that modify how we serve any demand space. Use these as invisible scaffolding — output industry-specific labels, NOT the type names.
+Every Circumstance picks ONE value on each of these 5 axes. A demand space's 5 Circumstances must show contrast — at least 2 distinct values on every axis across the set. The axes below are the invisible scaffolding; write industry-specific values, NOT the axis names.
 
 ### Type 1: Knowledge (The Friction Dimension)
 **What it captures:** The gap between the user's current mental model and the expert path.
 
-| Industry | Dimension Labels | Example Values |
+| Industry | Axis Label | Example Values |
 |----------|-----------------|----------------|
 | Banking | Financial literacy | First-time homebuyer, Seasoned trader |
 | SaaS | Technical proficiency | Non-technical manager, Engineer |
@@ -85,7 +102,7 @@ Five dimension types that modify how we serve any demand space. Use these as inv
 ### Type 2: Intent (The Stakes Dimension)
 **What it captures:** The urgency, emotional weight, and definition of success.
 
-| Industry | Dimension Labels | Example Values |
+| Industry | Axis Label | Example Values |
 |----------|-----------------|----------------|
 | Travel | Trip purpose | Board meeting (reliability), Family vacation (joy) |
 | Retail | Purchase context | Replenishing essentials, Gifting |
@@ -94,7 +111,7 @@ Five dimension types that modify how we serve any demand space. Use these as inv
 ### Type 3: Composition (The Ecosystem Dimension)
 **What it captures:** The social or technical environment surrounding the user.
 
-| Industry | Dimension Labels | Example Values |
+| Industry | Axis Label | Example Values |
 |----------|-----------------|----------------|
 | Streaming | Viewing context | Watching solo, Co-viewing with partner |
 | Theme park | Group | Solo thrill-seeker, Multi-generational family |
@@ -103,7 +120,7 @@ Five dimension types that modify how we serve any demand space. Use these as inv
 ### Type 4: Constraint (The Limitation Dimension)
 **What it captures:** External factors limiting what's possible right now.
 
-| Industry | Dimension Labels | Example Values |
+| Industry | Axis Label | Example Values |
 |----------|-----------------|----------------|
 | Theme park | Accessibility | Wheelchair user, Stroller-dependent |
 | E-commerce | Fulfillment | Rural delivery, Payment limitation |
@@ -112,25 +129,25 @@ Five dimension types that modify how we serve any demand space. Use these as inv
 ### Type 5: Moment (The Temporal Dimension)
 **What it captures:** The life context, calendar context, or emotional moment.
 
-| Industry | Dimension Labels | Example Values |
+| Industry | Axis Label | Example Values |
 |----------|-----------------|----------------|
 | Theme park | Life moment | Birthday, Last day of trip |
 | E-commerce | Life context | Holiday rush, Moving house |
 | Aviation | Travel occasion | Honeymoon, Bereavement travel |
 
-### Generation Rules for Dimensions
-1. Consider all 5 types before generating
-2. Produce at least 3 types per demand space × phase crossing
-3. Skip types only when genuinely irrelevant
-4. Use industry-specific labels, NOT the type names
-5. Total: 3-5 dimensions per crossing
-6. 2-4 values per dimension
+### Generation Rules for Circumstances
+1. Produce **exactly 5 Circumstances** per demand space.
+2. Each Circumstance is a tuple — one value on each of the 5 axes.
+3. Across the 5 Circumstances, every axis must show **contrast** — at least 2 distinct values on that axis (e.g. at least one Novice and one Expert on Knowledge).
+4. Each Circumstance carries a JTBD narrative: "When I am [context], I want to [action], so that [outcome]."
+5. Each Circumstance carries a **Struggle** (what pushes them away from the current habit) and a **Progress** (what they're reaching for). One short sentence each, in the customer's voice.
+6. Moment values are vivid real-life contexts ("Flying with a toddler", "First week postpartum") — never marketing-funnel labels.
 
 ### The Quality Test
 > "Would a customer use this word to describe their situation?"
 
-- ✅ "I'm on a budget" → Economic dimension
-- ✅ "I'm here with my grandparents" → Group dimension
+- ✅ "I'm on a budget" → Constraint axis value
+- ✅ "I'm here with my grandparents" → Composition axis value
 - ❌ "My digital engagement is high" — no customer says this
 - ❌ "I'm in the consideration phase" — marketing funnel, not situation
 
@@ -246,3 +263,43 @@ These PDFs are the source of truth. Subagents should read them when needed:
 | "Pass Holder Lifecycle" dimension | CRM segment, not situation |
 | Generic "personalized messaging" | Too vague to implement |
 | Same activation for different values | Defeats the purpose of dimensions |
+
+---
+
+## 7. Evidence-Driven Input Contract
+
+Generators now run AFTER discovery. They accept a `DiscoveryBundle` as input alongside the existing ModelInput:
+
+```
+DiscoveryBundle = {
+  approvedEvidence: Evidence[],        // interview notes, docs, quotes — summarized and approved
+  candidateSignals: {
+    problems:       Signal[],          // pain points named by the client
+    needs:          Signal[],          // explicit requests
+    opportunities:  Signal[],          // growth plays the client sees
+    gaps:           Signal[]           // missing capabilities / data / process
+  },
+  approvedBy: string,                  // PM/strategist who signed off
+  approvedAt: Date
+}
+
+Signal = {
+  id: string,
+  text: string,                        // 1-2 sentences
+  source: { evidenceId: string, quote?: string },  // traceability
+  department: string,                  // Marketing, CRM, Product, Service, etc.
+  confidence: 'high' | 'medium' | 'low'
+}
+```
+
+### Rules for Generators
+
+1. **Evidence traceability** — every demand space, dimension, and activation should cite at least one signal by ID when possible
+2. **Do not invent pain points** — use only problems from `candidateSignals.problems`
+3. **Do not invent capabilities** — dimensions must be detectable given the tech stack described in approved evidence
+4. **Confidence flags propagate** — if input signals are `low` confidence, mark the downstream output with a confidence caveat
+5. **Map first, propose second** — if an approved signal already describes a demand space, map to it; only propose new spaces when evidence reveals a gap
+
+### When Evidence is Absent
+
+If the generator is called WITHOUT a `DiscoveryBundle` (legacy flow, or user skipped discovery), proceed with the original brief-only logic but flag the output as `evidence: 'brief-only'` so the UI can surface a warning.

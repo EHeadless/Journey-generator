@@ -91,7 +91,7 @@ export default function ComboboxMulti({
 
   return (
     <div className="space-y-2">
-      <label className="text-xs text-[#c4c5d9]/40">{label}</label>
+      <label className="text-[10px] font-bold uppercase mb-2 block" style={{ color: 'var(--fg-3)' }}>{label}</label>
 
       {/* Selected items */}
       {selections.length > 0 && (
@@ -99,9 +99,10 @@ export default function ComboboxMulti({
           {selections.map(selection => (
             <div
               key={selection.id}
-              className="flex items-center gap-2 bg-[#252525] border border-[#434656]/30 rounded-lg p-2"
+              className="flex items-center gap-2 rounded-lg p-3"
+              style={{ background: 'var(--bg-3)', border: '1px solid var(--border-1)' }}
             >
-              <span className="text-sm text-[#e2e2e2] font-medium min-w-[120px]">
+              <span className="text-sm font-medium min-w-[120px]" style={{ color: 'var(--fg-1)' }}>
                 {selection.value}
               </span>
               {showPurpose && (
@@ -110,13 +111,17 @@ export default function ComboboxMulti({
                   value={selection.purpose || ''}
                   onChange={e => updatePurpose(selection.id, e.target.value)}
                   placeholder={purposePlaceholder}
-                  className="flex-1 bg-transparent border-none text-sm text-[#c4c5d9] placeholder:text-[#c4c5d9]/30 focus:outline-none"
+                  className="flex-1 bg-transparent border-none text-sm focus:outline-none"
+                  style={{ color: 'var(--fg-2)' }}
                 />
               )}
               <button
                 type="button"
                 onClick={() => removeSelection(selection.id)}
-                className="p-1 text-[#c4c5d9]/40 hover:text-[#ffb4ab] transition-colors"
+                className="p-1 transition-colors"
+                style={{ color: 'var(--fg-3)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--danger)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--fg-3)')}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -141,13 +146,15 @@ export default function ComboboxMulti({
             onFocus={() => setIsOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="w-full bg-[#1b1b1b] border border-[#434656]/30 rounded-lg px-4 py-2.5 pr-10 focus:ring-2 focus:ring-[#2e5bff] focus:border-transparent focus:outline-none text-sm placeholder:text-[#c4c5d9]/30 text-[#e2e2e2]"
+            className="w-full rounded-lg px-4 py-2.5 pr-10 focus:outline-none text-sm"
+            style={{ background: 'var(--bg-2)', border: '1px solid var(--border-1)', color: 'var(--fg-1)' }}
           />
           <svg
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#c4c5d9]/40"
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            style={{ color: 'var(--fg-3)' }}
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -155,13 +162,19 @@ export default function ComboboxMulti({
 
         {/* Dropdown */}
         {isOpen && (filteredOptions.length > 0 || isCustomValue) && (
-          <div className="absolute z-50 w-full mt-1 bg-[#1b1b1b] border border-[#434656]/40 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+          <div
+            className="absolute z-50 w-full mt-2 rounded-lg shadow-xl max-h-60 overflow-y-auto"
+            style={{ background: 'var(--bg-2)', border: '1px solid var(--border-1)' }}
+          >
             {filteredOptions.map(option => (
               <button
                 key={option}
                 type="button"
                 onClick={() => addSelection(option)}
-                className="w-full px-4 py-2.5 text-left text-sm text-[#e2e2e2] hover:bg-[#2e5bff]/20 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                className="w-full px-4 py-2.5 text-left text-sm transition-colors first:rounded-t-lg last:rounded-b-lg"
+                style={{ color: 'var(--fg-1)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-3)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
                 {option}
               </button>
@@ -170,7 +183,10 @@ export default function ComboboxMulti({
               <button
                 type="button"
                 onClick={() => addSelection(search.trim())}
-                className="w-full px-4 py-2.5 text-left text-sm text-[#b8c3ff] hover:bg-[#2e5bff]/20 transition-colors border-t border-[#434656]/30 flex items-center gap-2"
+                className="w-full px-4 py-2.5 text-left text-sm transition-colors flex items-center gap-2 font-medium"
+                style={{ color: 'var(--accent)', borderTop: '1px solid var(--border-1)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--accent-soft)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
