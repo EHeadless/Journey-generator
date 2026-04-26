@@ -145,7 +145,7 @@ When generating phases:
 
     const discoveryContext = buildDiscoveryContext(discoveryBundle);
 
-    // If the caller passed a specific journey (name + JTBD blueprint), we
+    // If the caller passed a specific journey (name + Pre-discovery JTBD blueprint), we
     // narrow the prompt to that journey. The business may span several
     // parallel journeys (Arrival / Transit / Departure); phases for one
     // should not bleed into the others.

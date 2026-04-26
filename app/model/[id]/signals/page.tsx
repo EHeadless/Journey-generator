@@ -4,7 +4,9 @@ import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import Link from 'next/link';
-import { StepProgress } from '@/components/StepProgress';
+import { AppHeader } from '@/components/AppHeader';
+import { useHydratedCaptureStore } from '@/components/capture/CaptureWorkshopCard';
+import { useHasDiagnostics } from '@/lib/captureStore';
 import { Signal, SignalType, ConfidenceLevel, Evidence } from '@/lib/types';
 import { useTheme } from '@/lib/hooks/useTheme';
 
@@ -79,6 +81,8 @@ export default function SignalsPage() {
   const setSignals = useStore((state) => state.setSignals);
   const removeSignal = useStore((state) => state.removeSignal);
   useTheme();
+  useHydratedCaptureStore((params.id as string) || '');
+  const hasDiagnostics = useHasDiagnostics((params.id as string) || '');
 
   const [apiKey, setApiKey] = useState(() =>
     typeof window !== 'undefined'
@@ -223,11 +227,13 @@ export default function SignalsPage() {
       className="min-h-screen"
       style={{ background: 'var(--bg-0)', color: 'var(--fg-1)' }}
     >
-      <StepProgress
-        currentStep="signals"
+      <AppHeader
         modelId={model.id}
         signalsCount={signals.length}
         hasDiscoveryBundle={!!model.discoveryBundle}
+        hasJourneyPhases={model.journeyPhases.length > 0}
+        hasDiagnostics={hasDiagnostics}
+        currentStep="signals"
       />
 
       <div className="p-8">

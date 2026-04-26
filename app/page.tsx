@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Megaphone,
@@ -11,7 +11,6 @@ import {
   Check,
   Circle,
   Loader2,
-  SlidersHorizontal,
   X,
   Plus,
   ChevronDown,
@@ -19,10 +18,13 @@ import {
   Layers,
   FolderOpen,
   Trash2,
+  Upload,
+  FileText,
 } from 'lucide-react';
-import { useTheme, type ThemeConfig } from '@/lib/hooks/useTheme';
 import { useStore } from '@/lib/store';
-import { ExperienceType, TechStack, TechTool, Product, Persona } from '@/lib/types';
+import { ExperienceType, TechStack, TechTool, Product, Persona, BriefDocument } from '@/lib/types';
+import { AppHeader } from '@/components/AppHeader';
+import { useApiKey } from '@/lib/hooks/useApiKey';
 import { v4 as uuidv4 } from 'uuid';
 
 // ============================================================================
@@ -446,188 +448,6 @@ function GeneratingOverlay({
   );
 }
 
-function TweaksPanel({
-  open,
-  onClose,
-  theme,
-  setTheme,
-}: {
-  open: boolean;
-  onClose: () => void;
-  theme: ThemeConfig;
-  setTheme: (t: ThemeConfig) => void;
-}) {
-  if (!open) return null;
-
-  const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="mb-6">
-      <div className="text-[10px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--fg-3)' }}>
-        {label}
-      </div>
-      <div>{children}</div>
-    </div>
-  );
-
-  const Seg = ({
-    options,
-    value,
-    onChange,
-  }: {
-    options: { value: string; label: string }[];
-    value: string;
-    onChange: (v: string) => void;
-  }) => (
-    <div
-      className="inline-flex gap-1 p-1 rounded-xl"
-      style={{ background: 'var(--bg-3)', border: '1px solid var(--border-1)' }}
-    >
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          onClick={() => onChange(o.value)}
-          className="py-2 px-4 rounded-lg border-none cursor-pointer text-xs font-bold transition-all"
-          style={{
-            background: value === o.value ? 'var(--bg-1)' : 'transparent',
-            color: value === o.value ? 'var(--fg-1)' : 'var(--fg-2)',
-            boxShadow: value === o.value ? '0 1px 3px rgba(0,0,0,.12)' : 'none',
-          }}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-
-  return (
-    <>
-      <div onClick={onClose} className="fixed inset-0 z-[80] bg-black/20 backdrop-blur-sm" />
-      <aside
-        className="fixed right-6 top-20 z-[90] w-80 rounded-2xl p-6"
-        style={{ background: 'var(--bg-1)', border: '1px solid var(--border-1)', boxShadow: 'var(--shadow-lg)' }}
-      >
-        <div className="flex items-center justify-between mb-6">
-          <div className="text-lg font-bold" style={{ color: 'var(--fg-1)' }}>Tweaks</div>
-          <button
-            type="button"
-            className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-            style={{ color: 'var(--fg-3)' }}
-            onClick={onClose}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--bg-3)';
-              e.currentTarget.style.color = 'var(--fg-1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'var(--fg-3)';
-            }}
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <Row label="Mode">
-          <Seg
-            options={[
-              { value: 'linear', label: 'Linear' },
-              { value: 'editorial', label: 'Editorial' },
-              { value: 'ei', label: 'EI' },
-            ]}
-            value={theme.theme}
-            onChange={(v) => setTheme({ ...theme, theme: v as ThemeConfig['theme'] })}
-          />
-        </Row>
-        <Row label="Density">
-          <Seg
-            options={[
-              { value: 'compact', label: 'Compact' },
-              { value: 'comfy', label: 'Comfy' },
-              { value: 'spacious', label: 'Spacious' },
-            ]}
-            value={theme.density}
-            onChange={(v) => setTheme({ ...theme, density: v as ThemeConfig['density'] })}
-          />
-        </Row>
-        <Row label="Canvas">
-          <Seg
-            options={[
-              { value: 'dots', label: 'Dots' },
-              { value: 'grid', label: 'Grid' },
-              { value: 'plain', label: 'Plain' },
-            ]}
-            value={theme.bg}
-            onChange={(v) => setTheme({ ...theme, bg: v as ThemeConfig['bg'] })}
-          />
-        </Row>
-      </aside>
-    </>
-  );
-}
-
-function TopBar({
-  left,
-  right,
-  onOpenTweaks,
-  apiKey,
-  onApiKeyChange,
-}: {
-  left: string;
-  right?: React.ReactNode;
-  onOpenTweaks: () => void;
-  apiKey: string;
-  onApiKeyChange: (k: string) => void;
-}) {
-  return (
-    <header
-      className="sticky top-0 z-[100] glass-header py-3.5 px-8 flex items-center justify-between"
-      style={{ borderBottom: '1px solid var(--border-1)' }}
-    >
-      <div className="flex items-center gap-4">
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-lg"
-          style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
-        >
-          J
-        </div>
-        <div className="flex items-center text-sm font-bold tracking-tight">
-          <span style={{ color: 'var(--fg-1)' }}>Journey Generator</span>
-          <span className="mx-3 opacity-20 text-lg font-light">/</span>
-          <span style={{ color: 'var(--fg-3)' }}>{left}</span>
-        </div>
-      </div>
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--fg-3)' }}>
-            OpenAI Key
-          </span>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => onApiKeyChange(e.target.value)}
-            placeholder="sk-••••"
-            className="rounded-full px-4 py-1.5 text-xs outline-none w-44 transition-all"
-            style={{
-              background: 'var(--bg-3)',
-              border: '1px solid var(--border-1)',
-              color: 'var(--fg-1)',
-            }}
-          />
-        </div>
-        {right}
-        <button
-          type="button"
-          className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors"
-          style={{ color: 'var(--fg-2)' }}
-          onClick={onOpenTweaks}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--fg-2)')}
-        >
-          <SlidersHorizontal size={14} /> Tweaks
-        </button>
-      </div>
-    </header>
-  );
-}
-
 // ============================================================================
 // MAIN PAGE
 // ============================================================================
@@ -635,24 +455,20 @@ function TopBar({
 export default function BriefPage() {
   const router = useRouter();
   const createModel = useStore((state) => state.createModel);
-  const [theme, setTheme] = useTheme();
-  const [tweaksOpen, setTweaksOpen] = useState(false);
+  const [apiKey] = useApiKey();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [techExpanded, setTechExpanded] = useState(false);
 
-  // API key
-  const [apiKey, setApiKey] = useState('');
-  useEffect(() => {
-    const saved = localStorage.getItem('openai-api-key');
-    if (saved) setApiKey(saved);
-  }, []);
-  const handleApiKeyChange = (key: string) => {
-    setApiKey(key);
-    if (key) localStorage.setItem('openai-api-key', key);
-    else localStorage.removeItem('openai-api-key');
-  };
+  // Brief upload state. The full parsed text is preserved on
+  // briefDoc so we can pass it through to the model on submit;
+  // downstream agents read it verbatim for richer context.
+  const [briefDoc, setBriefDoc] = useState<BriefDocument | null>(null);
+  const [briefBusy, setBriefBusy] = useState<'parsing' | 'extracting' | null>(null);
+  const [briefError, setBriefError] = useState<string | null>(null);
+  const [briefPrefillCount, setBriefPrefillCount] = useState<number | null>(null);
+  const briefInputRef = useRef<HTMLInputElement | null>(null);
 
   // Form state
   const [experienceTypes, setExperienceTypes] = useState<ExperienceType[]>(['marketing']);
@@ -774,6 +590,171 @@ export default function BriefPage() {
     setPainPoints('');
     setChannels('');
     setJourneys([{ id: uuidv4(), name: '', jtbdBlueprint: '', phases: [] }]);
+    setBriefDoc(null);
+    setBriefError(null);
+    setBriefPrefillCount(null);
+  };
+
+  /**
+   * Brief upload → parse-file → extract-brief-fields → merge-only-empty.
+   *
+   * The brief is treated as a *suggestion layer*: we never overwrite a
+   * field the user already typed. The full parsed text is also retained
+   * on briefDoc so it can ride along on the model and downstream agents
+   * (journey-phase-generator, demand-space-generator,
+   * discovery-question-generator) read the document verbatim — not just
+   * the extracted summary.
+   */
+  const handleBriefUpload = async (file: File) => {
+    if (!apiKey) {
+      setBriefError('Add your OpenAI key in the header before uploading a brief.');
+      return;
+    }
+    setBriefError(null);
+    setBriefPrefillCount(null);
+    setBriefBusy('parsing');
+    try {
+      // 1. Parse the file (PDF/DOCX/text) → plain text
+      const fd = new FormData();
+      fd.append('file', file);
+      const parseRes = await fetch('/api/parse-file', { method: 'POST', body: fd });
+      if (!parseRes.ok) {
+        const err = await parseRes.json().catch(() => ({}));
+        throw new Error(err.error || `Parse failed (${parseRes.status})`);
+      }
+      const parsed = (await parseRes.json()) as {
+        text: string;
+        filename: string;
+        sizeBytes: number;
+        charCount: number;
+      };
+
+      const doc: BriefDocument = {
+        filename: parsed.filename || file.name,
+        text: parsed.text,
+        uploadedAt: new Date(),
+        sizeBytes: parsed.sizeBytes,
+        charCount: parsed.charCount,
+      };
+      setBriefDoc(doc);
+
+      // 2. Extract structured fields from the parsed text
+      setBriefBusy('extracting');
+      const extractRes = await fetch('/api/extract-brief-fields', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey,
+          text: parsed.text,
+          filename: parsed.filename || file.name,
+        }),
+      });
+      if (!extractRes.ok) {
+        const err = await extractRes.json().catch(() => ({}));
+        throw new Error(err.error || `Extract failed (${extractRes.status})`);
+      }
+      const { fields } = (await extractRes.json()) as {
+        fields: {
+          industry?: string;
+          experienceTypes?: ExperienceType[];
+          businessDescription?: string;
+          painPoints?: string;
+          channels?: string[];
+          personas?: string[];
+          products?: Array<{ name?: string; description?: string }>;
+          techStack?: Record<string, Array<{ value?: string; purpose?: string }>>;
+          journeys?: Array<{ name?: string; jtbdBlueprint?: string; phases?: string[] }>;
+        };
+      };
+
+      // 3. Merge only into empty fields. Counts how many fields the
+      //    extraction actually populated so the UI can give feedback.
+      let prefilled = 0;
+      const techMap: Array<[string, React.Dispatch<React.SetStateAction<TechItem[]>>, TechItem[]]> = [
+        ['cloudWarehouse', setCloudWarehouse, cloudWarehouse],
+        ['dataStorage', setDataStorage, dataStorage],
+        ['crm', setCrm, crm],
+        ['cdp', setCdp, cdp],
+        ['cep', setCep, cep],
+        ['dxp', setDxp, dxp],
+        ['aiModels', setAiModels, aiModels],
+        ['aiPlatform', setAiPlatform, aiPlatform],
+      ];
+
+      if (fields.industry && industry.trim() === '') {
+        setIndustry(fields.industry);
+        prefilled++;
+      }
+      if (fields.experienceTypes && fields.experienceTypes.length > 0) {
+        // Only override if the user is still on the default single 'marketing' selection
+        if (experienceTypes.length <= 1) {
+          setExperienceTypes(fields.experienceTypes);
+          prefilled++;
+        }
+      }
+      if (fields.businessDescription && businessDescription.trim() === '') {
+        setBusinessDescription(fields.businessDescription);
+        prefilled++;
+      }
+      if (fields.painPoints && painPoints.trim() === '') {
+        setPainPoints(fields.painPoints);
+        prefilled++;
+      }
+      if (fields.channels && fields.channels.length > 0 && channels.trim() === '') {
+        setChannels(fields.channels.join(', '));
+        prefilled++;
+      }
+      if (fields.personas && fields.personas.length > 0 && personas.filter(p => p.label.trim()).length === 0) {
+        setPersonas(fields.personas.map(label => ({ id: uuidv4(), label })));
+        prefilled++;
+      }
+      if (fields.products && fields.products.length > 0 && products.filter(p => p.name.trim()).length === 0) {
+        setProducts(
+          fields.products
+            .filter(p => p.name && p.name.trim())
+            .map(p => ({ id: uuidv4(), name: p.name || '', description: p.description || '' }))
+        );
+        prefilled++;
+      }
+      if (fields.techStack) {
+        for (const [key, setter, current] of techMap) {
+          const items = fields.techStack[key];
+          if (items && items.length > 0 && current.length === 0) {
+            setter(
+              items
+                .filter(it => it.value && it.value.trim())
+                .map(it => ({ id: uuidv4(), name: it.value || '', description: it.purpose || '' }))
+            );
+            prefilled++;
+          }
+        }
+      }
+      if (
+        fields.journeys &&
+        fields.journeys.length > 0 &&
+        journeys.filter(j => j.name.trim()).length === 0
+      ) {
+        setJourneys(
+          fields.journeys
+            .filter(j => j.name && j.name.trim())
+            .map(j => ({
+              id: uuidv4(),
+              name: j.name || '',
+              jtbdBlueprint: j.jtbdBlueprint || '',
+              phases: (j.phases || []).map(name => ({ id: uuidv4(), name })),
+            }))
+        );
+        prefilled++;
+      }
+
+      setBriefPrefillCount(prefilled);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      setBriefError(msg);
+    } finally {
+      setBriefBusy(null);
+      if (briefInputRef.current) briefInputRef.current.value = '';
+    }
   };
 
   const addProduct = () => {
@@ -901,6 +882,7 @@ export default function BriefPage() {
       personas: personas.filter(p => p.label).length > 0 ? personas.filter(p => p.label) : undefined,
       painPoints: painPoints || undefined,
       channels: channels ? channels.split(',').map(c => c.trim()).filter(Boolean) : undefined,
+      briefDocument: briefDoc || undefined,
     };
 
     // Normalize journeys: drop empty rows, fall back to a single default
@@ -956,12 +938,7 @@ export default function BriefPage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-0)' }}>
-      <TopBar
-        left="New brief"
-        onOpenTweaks={() => setTweaksOpen(true)}
-        apiKey={apiKey}
-        onApiKeyChange={handleApiKeyChange}
-      />
+      <AppHeader currentStep="brief" />
 
       <main className="min-h-screen pb-40">
         <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="max-w-[780px] mx-auto pt-24 px-6">
@@ -982,6 +959,110 @@ export default function BriefPage() {
             <p className="text-lg leading-relaxed max-w-[560px]" style={{ color: 'var(--fg-2)' }}>
               We'll synthesize journey phases, demand spaces, and circumstances from your brief — then you'll shape them on a canvas.
             </p>
+          </div>
+
+          {/* Brief Upload */}
+          <div
+            className="mb-4 p-5 rounded-xl"
+            style={{
+              background: briefDoc ? 'var(--accent-soft)' : 'var(--bg-2)',
+              border: briefDoc ? '1px solid var(--accent)' : '1px dashed var(--border-2)',
+            }}
+          >
+            <div className="flex items-center gap-4">
+              <div
+                className="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: briefDoc ? 'var(--accent)' : 'var(--bg-3)',
+                  color: briefDoc ? 'var(--accent-fg)' : 'var(--fg-2)',
+                }}
+              >
+                {briefDoc ? <FileText size={20} /> : <Upload size={20} />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold mb-0.5" style={{ color: 'var(--fg-1)' }}>
+                  {briefDoc ? briefDoc.filename : 'Have a brief? Upload it.'}
+                </div>
+                <div className="text-[11px]" style={{ color: 'var(--fg-2)' }}>
+                  {briefDoc ? (
+                    <>
+                      {Math.round(briefDoc.charCount / 1000)}k chars parsed
+                      {briefPrefillCount !== null && (
+                        <> · {briefPrefillCount} field{briefPrefillCount === 1 ? '' : 's'} pre-filled (review below)</>
+                      )}
+                    </>
+                  ) : (
+                    'PDF, DOCX, or text. We extract structured fields and pre-fill empty form sections — your typed values are never overwritten.'
+                  )}
+                </div>
+              </div>
+              <input
+                ref={briefInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleBriefUpload(f);
+                }}
+                className="hidden"
+              />
+              {briefDoc ? (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => briefInputRef.current?.click()}
+                    disabled={!!briefBusy}
+                    className="px-3 py-1.5 text-[11px] font-bold rounded-lg transition-colors"
+                    style={{ background: 'var(--bg-3)', color: 'var(--fg-1)' }}
+                  >
+                    Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBriefDoc(null);
+                      setBriefError(null);
+                      setBriefPrefillCount(null);
+                    }}
+                    disabled={!!briefBusy}
+                    className="p-1.5 rounded-lg transition-colors"
+                    style={{ color: 'var(--fg-3)' }}
+                    aria-label="Remove brief"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => briefInputRef.current?.click()}
+                  disabled={!!briefBusy}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all flex-shrink-0"
+                  style={{
+                    background: 'var(--accent)',
+                    color: 'var(--accent-fg)',
+                    opacity: briefBusy ? 0.6 : 1,
+                    cursor: briefBusy ? 'wait' : 'pointer',
+                  }}
+                >
+                  {briefBusy === 'parsing' ? (
+                    <><Loader2 size={14} className="animate-spin" /> Parsing…</>
+                  ) : briefBusy === 'extracting' ? (
+                    <><Loader2 size={14} className="animate-spin" /> Extracting…</>
+                  ) : (
+                    <><Upload size={14} /> Upload Brief</>
+                  )}
+                </button>
+              )}
+            </div>
+            {briefError && (
+              <div
+                className="mt-3 px-3 py-2 rounded-lg text-[11px] font-medium"
+                style={{ background: 'var(--danger-soft, var(--bg-3))', color: 'var(--danger)' }}
+              >
+                {briefError}
+              </div>
+            )}
           </div>
 
           {/* Quick Start Bar */}
@@ -1640,7 +1721,7 @@ export default function BriefPage() {
                   <textarea
                     value={j.jtbdBlueprint}
                     onChange={(e) => updateJourneyDraft(j.id, 'jtbdBlueprint', e.target.value)}
-                    placeholder="JTBD blueprint — one-liner framing the customer's fundamental motivation for this journey"
+                    placeholder="Pre-discovery JTBD blueprint — one-liner framing the customer's fundamental motivation for this journey"
                     className="w-full text-xs p-3 rounded-lg border-none outline-none resize-none mb-4"
                     style={{ background: 'var(--bg-3)', color: 'var(--fg-2)' }}
                     rows={2}
@@ -1788,7 +1869,6 @@ export default function BriefPage() {
         </form>
       </main>
 
-      <TweaksPanel open={tweaksOpen} onClose={() => setTweaksOpen(false)} theme={theme} setTheme={setTheme} />
       <GeneratingOverlay open={isGenerating} currentStep={generationStep} steps={generationSteps} />
     </div>
   );

@@ -81,7 +81,7 @@ export function TweaksPanel({ open, onClose, theme, setTheme }: TweaksPanelProps
         <TweaksRow label="Mode">
           <TweaksSeg
             options={[
-              { value: 'linear', label: 'Linear' },
+              { value: 'dark', label: 'Dark' },
               { value: 'editorial', label: 'Editorial' },
               { value: 'ei', label: 'EI' },
             ]}

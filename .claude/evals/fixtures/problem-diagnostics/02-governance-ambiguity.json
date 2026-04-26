@@ -1,0 +1,70 @@
+{
+  "name": "Governance ambiguity",
+  "description": "Approval/RACI/ownership problems should classify as `governance`. Brand voice drift should be cross-cutting `brand`.",
+  "endpoint": "/api/classify-problems",
+  "request": {
+    "model": "gpt-4o",
+    "problems": [
+      {
+        "signalId": "g-001",
+        "text": "Nobody knows who owns the customer record once a deal closes — Sales says CRM, CRM says Service.",
+        "department": "Operations",
+        "sourceWorkshops": ["Cross-functional ownership workshop"]
+      },
+      {
+        "signalId": "g-002",
+        "text": "Personalisation campaigns sit in a 6-week legal review before any A/B test can launch.",
+        "department": "Marketing",
+        "sourceWorkshops": ["Marketing operations review"]
+      },
+      {
+        "signalId": "g-003",
+        "text": "Our brand voice swings between corporate-formal in email and meme-casual on Instagram, with no editorial standard.",
+        "department": "Brand",
+        "sourceWorkshops": ["Brand consistency audit"]
+      }
+    ],
+    "journeyPhases": [
+      {
+        "id": "ph-discover",
+        "label": "Discover",
+        "description": "Customer becomes aware of category and starts gathering options.",
+        "trigger": "First brand exposure or search"
+      },
+      {
+        "id": "ph-consider",
+        "label": "Consider",
+        "description": "Customer evaluates two or three contenders and forms purchase criteria.",
+        "trigger": "Visits comparison content or pricing page"
+      },
+      {
+        "id": "ph-purchase",
+        "label": "Purchase",
+        "description": "Customer commits, configures, and pays.",
+        "trigger": "Adds to cart or starts checkout flow"
+      }
+    ]
+  },
+  "expected": {
+    "arrayPath": "diagnostics",
+    "keyField": "problemSignalId",
+    "compareFields": ["discipline", "affectedPhaseIds"],
+    "items": [
+      {
+        "problemSignalId": "g-001",
+        "discipline": "governance",
+        "affectedPhaseIds": []
+      },
+      {
+        "problemSignalId": "g-002",
+        "discipline": "governance",
+        "affectedPhaseIds": []
+      },
+      {
+        "problemSignalId": "g-003",
+        "discipline": "brand",
+        "affectedPhaseIds": []
+      }
+    ]
+  }
+}

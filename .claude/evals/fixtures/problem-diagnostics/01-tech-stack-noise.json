@@ -1,0 +1,70 @@
+{
+  "name": "Tech-stack noise",
+  "description": "Backend integration / data pipeline issues should classify as `technical`. Cross-CRM sync should be cross-cutting (affectedPhaseIds=[]).",
+  "endpoint": "/api/classify-problems",
+  "request": {
+    "model": "gpt-4o",
+    "problems": [
+      {
+        "signalId": "p-001",
+        "text": "Our CRM and CDP fall out of sync nightly because the ETL job times out.",
+        "department": "Engineering",
+        "sourceWorkshops": ["Data & Analytics Architecture review"]
+      },
+      {
+        "signalId": "p-002",
+        "text": "Booking confirmation emails take 6+ minutes to send because of a queue backlog in Braze.",
+        "department": "CRM",
+        "sourceWorkshops": ["Post-Booking CX deep-dive"]
+      },
+      {
+        "signalId": "p-003",
+        "text": "The booking widget on the homepage breaks on Safari because of an unmaintained JS dependency.",
+        "department": "Product",
+        "sourceWorkshops": ["Pre-Booking site issues"]
+      }
+    ],
+    "journeyPhases": [
+      {
+        "id": "ph-pre-booking",
+        "label": "Pre-Booking",
+        "description": "Customer is browsing destinations and shaping intent before purchase.",
+        "trigger": "Visits site or app for the first time"
+      },
+      {
+        "id": "ph-post-booking",
+        "label": "Post-Booking",
+        "description": "Booking is confirmed; customer awaits trip details and prep info.",
+        "trigger": "Successful payment confirmation"
+      },
+      {
+        "id": "ph-pre-journey",
+        "label": "Pre-Journey",
+        "description": "24h to 72h before travel — check-in, baggage, anxiety reduction.",
+        "trigger": "T-72h reminder window opens"
+      }
+    ]
+  },
+  "expected": {
+    "arrayPath": "diagnostics",
+    "keyField": "problemSignalId",
+    "compareFields": ["discipline", "affectedPhaseIds"],
+    "items": [
+      {
+        "problemSignalId": "p-001",
+        "discipline": "technical",
+        "affectedPhaseIds": []
+      },
+      {
+        "problemSignalId": "p-002",
+        "discipline": "martech",
+        "affectedPhaseIds": ["ph-post-booking"]
+      },
+      {
+        "problemSignalId": "p-003",
+        "discipline": "technical",
+        "affectedPhaseIds": ["ph-pre-booking"]
+      }
+    ]
+  }
+}

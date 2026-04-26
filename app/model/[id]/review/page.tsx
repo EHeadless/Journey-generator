@@ -4,7 +4,9 @@ import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import Link from 'next/link';
-import { StepProgress } from '@/components/StepProgress';
+import { AppHeader } from '@/components/AppHeader';
+import { useHydratedCaptureStore } from '@/components/capture/CaptureWorkshopCard';
+import { useHasDiagnostics } from '@/lib/captureStore';
 import { Signal, SignalType, ConfidenceLevel, Evidence } from '@/lib/types';
 import { useTheme } from '@/lib/hooks/useTheme';
 
@@ -119,6 +121,8 @@ export default function ReviewPage() {
   );
   const setCurrentStep = useStore((state) => state.setCurrentStep);
   useTheme();
+  useHydratedCaptureStore((params.id as string) || '');
+  const hasDiagnostics = useHasDiagnostics((params.id as string) || '');
 
   const evidence = useMemo<Evidence[]>(
     () => model?.evidenceRecords || [],
@@ -353,7 +357,7 @@ export default function ReviewPage() {
       candidateSignals,
       approvedBy: approverName.trim(),
     });
-    setCurrentStep('landscape');
+    setCurrentStep('evidenced-landscape');
     setJustApproved(true);
     setIsApproving(false);
   }
@@ -380,11 +384,13 @@ export default function ReviewPage() {
         className="min-h-screen"
         style={{ background: 'var(--bg-0)', color: 'var(--fg-1)' }}
       >
-        <StepProgress
-          currentStep="review"
+        <AppHeader
           modelId={model.id}
           signalsCount={0}
           hasDiscoveryBundle={!!discoveryBundle}
+          hasJourneyPhases={model.journeyPhases.length > 0}
+          hasDiagnostics={hasDiagnostics}
+          currentStep="review"
         />
         <div className="max-w-3xl mx-auto p-8">
           <div className="eyebrow mb-2">Step 05 · Review</div>
@@ -412,11 +418,13 @@ export default function ReviewPage() {
       className="min-h-screen"
       style={{ background: 'var(--bg-0)', color: 'var(--fg-1)' }}
     >
-      <StepProgress
-        currentStep="review"
+      <AppHeader
         modelId={model.id}
         signalsCount={signals.length}
         hasDiscoveryBundle={!!discoveryBundle}
+        hasJourneyPhases={model.journeyPhases.length > 0}
+        hasDiagnostics={hasDiagnostics}
+        currentStep="review"
       />
 
       <div className="max-w-7xl mx-auto p-8">

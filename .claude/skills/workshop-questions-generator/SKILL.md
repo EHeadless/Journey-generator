@@ -37,14 +37,16 @@ readouts, general discovery), skip it entirely and stay in open mode.
 
 ## 2. Per-workshop profiles
 
-Select the profile that matches the workshop's name/phase. Follow the
-volume guidance for that profile — volume matters, a discovery workshop
-with 8 questions leaves time on the table. **Do not cap the client.**
+Select the profile that matches the workshop's name/phase. Volume
+guidance is a **floor, not a ceiling** — the number listed is the
+minimum the room must leave with. **Do not cap the client.** When the
+brief and research provide more material, write more questions; when
+they don't, never go below the floor by trimming for tidiness.
 
 ### Kick-off / objectives workshops
 _Trigger words: "kick-off", "objectives", "introduction"._
 
-All open questions, no intent forcing. **15-25 questions.** Topics:
+All open questions, no intent forcing. **At least 15 questions (floor; go to 25+ when the brief is rich).** Topics:
 - business objectives (next 6 / 12 / 24 months)
 - pain points the leadership team already sees
 - the opportunity size, how they frame it internally
@@ -57,8 +59,7 @@ All open questions, no intent forcing. **15-25 questions.** Topics:
 ### Governance / delivery workshops
 _Trigger words: "governance", "delivery", "operations", "RACI"._
 
-Open questions first, then a topic silo on methodology. **15-25
-questions.** Topics:
+Open questions first, then a topic silo on methodology. **At least 15 questions (floor; 25+ when evidence supports).** Topics:
 - governance model (steering committees, working groups, RACI)
 - operational reporting cadence and format
 - delivery methodology — SAFe, Scrum, Kanban, waterfall, hybrid
@@ -80,15 +81,13 @@ silo** — for each phase in the journey, ask the same probe set:
 - what signals tell them the phase is going well / badly
 - who internally owns this phase
 
-Total volume scales with phase count. For a 5-phase journey this is
-typically **25-40 questions.**
+Total volume scales with phase count. For a 5-phase journey, **at least 25 questions (floor; 40+ when the journey is rich).**
 
 ### Channel / product workshops (one per channel or product)
 _Trigger words: product name, channel name, "CRM", "email", "web",
 "mobile", "contact centre"._
 
-Open Pass A (5-8 questions), then a topic silo. **20-30 questions.**
-Topics:
+Open Pass A (5-8 questions), then a topic silo. **At least 20 questions (floor; 30+ when channel is broad).** Topics:
 - current audience strategy and segmentation
 - content strategy and message frameworks
 - orchestration rules and triggers
@@ -108,8 +107,7 @@ scoped to that one phase. Structure:
 
 Pass A — 5-8 open questions about the phase generally.
 
-Pass B — a topic silo that goes wide within the phase. **25-40
-questions per phase** covering:
+Pass B — a topic silo that goes wide within the phase. **At least 25 questions per phase (floor; 40+ when research surfaces more pains/opps).** Cover:
 - experience design — every touchpoint in the phase, what works, what
   doesn't, edge cases
 - tech — all systems involved, integrations, data flows, latency, auth
@@ -123,9 +121,7 @@ questions per phase** covering:
 ### Tech deep-dive workshops
 _Trigger words: "tech deep-dive", "technology workshop", "integration"._
 
-Open Pass A, then a topic silo. **30-50 questions.** Go wide — ask
-about *all* their stack, *all* their integrations, *all* their
-challenges. Topics:
+Open Pass A, then a topic silo. **At least 30 questions (floor; 50+ when stack is broad).** Go wide — ask about *all* their stack, *all* their integrations, *all* their challenges. Topics:
 - stack inventory across CRM / CDP / CEP / DXP / analytics / AI
 - every integration they rely on and how it fails
 - data flows end-to-end (capture → store → activate)
@@ -141,8 +137,7 @@ challenges. Topics:
 ### Audit readouts (Current-state experience / data / tech / JTBD)
 _Trigger words: "audit", "current state", "read-out", "readout"._
 
-Audit-style open questions, then a topic silo. **15-25 questions.**
-Topics:
+Audit-style open questions, then a topic silo. **At least 15 questions (floor; 25+ when the audit surfaces more).** Topics:
 - what exists today (inventory)
 - what's working well (keep list)
 - what's broken (stop list)
@@ -155,8 +150,7 @@ Topics:
 _Trigger words: "design scoping", "DAM", "CMP", "IA", "sitemap", "KPI",
 "backlog", "RACI", "define readout"._
 
-Scoping-style open questions, then a topic silo. **15-25 questions.**
-Topics:
+Scoping-style open questions, then a topic silo. **At least 15 questions (floor; 25+ when scope is wide).** Topics:
 - scope boundaries (in / out)
 - success criteria for this workstream
 - stakeholders and approvers
@@ -268,7 +262,12 @@ Produce JSON: `{ "questions": [ … ] }`. Each question:
   "text": "…",
   "intent": "problem",
   "journeyPhase": "Onboarding",
-  "rationale": "One sentence: why we ask"
+  "rationale": "One sentence: why we ask",
+  "sourceContext": "research",
+  "sourceCitations": {
+    "researchDocId": "doc_abc123",
+    "researchExcerpt": "≤200-char verbatim snippet that seeded the question"
+  }
 }
 ```
 
@@ -277,6 +276,18 @@ Produce JSON: `{ "questions": [ … ] }`. Each question:
 - `journeyPhase` — optional; required when the workshop is a journey
   deep-dive and a phase is supplied.
 - `rationale` — one sentence for the facilitator. Required.
+- `sourceContext` — REQUIRED on every question. One of:
+  - `"form"` → derived from the structured brief form alone.
+  - `"brief"` → inspired by the verbatim brief document.
+  - `"research"` → inspired by an uploaded research artifact.
+  - `"mixed"` → drew on more than one of the above.
+- `sourceCitations` — REQUIRED whenever `sourceContext` is not `"form"`.
+  - `briefExcerpt` (≤200 chars, verbatim from the brief) when the brief
+    seeded the question.
+  - `researchDocId` (must equal the `id` of one of the supplied research
+    docs — never invent ids) when research seeded it, paired with
+    `researchExcerpt` (≤200 chars, verbatim from that doc's summary or
+    quote list).
 - No duplicates. No double-barreled questions.
 
 Ordering: Pass A first (open), then Pass B silos in the stacking order
@@ -287,4 +298,4 @@ above. Contradictions last. No prose, no markdown outside the JSON.
 The inventory is an editable draft. Humans in the Plan UI will add,
 remove, re-tag, retarget, and rewrite. Prefer copy-pasteable,
 distinct, sharp questions over a high count of overlapping ones —
-volume is a target, not a ceiling, and not an excuse for padding.
+volume is a **floor, not a ceiling**, and never an excuse for padding.

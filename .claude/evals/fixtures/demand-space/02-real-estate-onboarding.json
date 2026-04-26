@@ -1,0 +1,24 @@
+{
+  "name": "Real Estate — Onboarding phase",
+  "description": "Residential rental onboarding. Motivations should center on settling in, neighbourhood familiarity, building trust with the operator.",
+  "endpoint": "/api/generate-demand-spaces",
+  "rubricFile": "demand-space.md",
+  "extractPath": "demandSpaces",
+  "request": {
+    "input": {
+      "experienceTypes": ["service"],
+      "industry": "Real Estate",
+      "businessDescription": "Operator of premium long-stay residential buildings. Tenants stay 6 months to 3 years and rely on a resident app + concierge service for everything from maintenance to community events.",
+      "channels": ["resident app", "in-building concierge", "email", "WhatsApp"],
+      "painPoints": "First 30 days have the most maintenance tickets and the highest churn risk. Tenants don't know who handles what (super vs concierge vs landlord)."
+    },
+    "journeyPhase": {
+      "id": "ph-onboard",
+      "journeyId": "j-resident",
+      "label": "Onboarding",
+      "description": "Tenant has signed the lease and is moving in. First 30 days — settling, learning the building, building confidence in the operator.",
+      "trigger": "Lease signed; move-in date scheduled",
+      "order": 2
+    }
+  }
+}

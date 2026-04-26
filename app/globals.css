@@ -24,8 +24,8 @@
   --card-gap: calc(12px * var(--density-scale));
 }
 
-/* ---------- LINEAR (refined dark) - DEFAULT ---------- */
-:root, :root[data-theme="linear"] {
+/* ---------- DARK (refined dark) - DEFAULT ---------- */
+:root, :root[data-theme="dark"] {
   --bg-0: #0a0a0b;
   --bg-1: #0f0f11;
   --bg-2: #17171a;
@@ -109,7 +109,7 @@
 /* ---------- Global scrollbars ---------- */
 /* Theme-aware scrollbars so the track + thumb match the surrounding bg
  * instead of defaulting to the browser's gray (which sticks out on dark
- * themes like Linear). The track is transparent so it disappears into
+ * themes like Dark). The track is transparent so it disappears into
  * whatever surface it sits on; the thumb is a very low-contrast foreground
  * tint that's visible on hover but invisible at rest. Applies to every
  * scrollable element by default. Components that want truly invisible
@@ -297,4 +297,12 @@ input::placeholder, textarea::placeholder { color: var(--fg-2); opacity: 1; }
 .glass-header {
   background: color-mix(in srgb, var(--bg-0) 80%, transparent);
   backdrop-filter: saturate(160%) blur(12px);
+}
+
+/* ---------- Glass pane ---------- */
+.glass-pane {
+  background: var(--bg-1);
+  border: 1px solid var(--border-1);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }

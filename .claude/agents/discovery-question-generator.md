@@ -224,32 +224,67 @@ Engagement context:
 Journey phases (optional):
   [list of phase labels with short descriptions — tag your questions
    with the exact label of the phase they probe]
+
+SOURCES IN SCOPE: (banner naming the evidence layers — form fields,
+  optional verbatim brief, optional research evidence with N docs)
+
+VERBATIM CLIENT BRIEF (when uploaded):
+  [full text of the brief document]
+
+RESEARCH EVIDENCE (when uploaded — one block per doc):
+  Research doc id: [exact id — cite this id verbatim in sourceCitations]
+  Headline / Summary / Key findings / Pains & frictions /
+  Opportunities / Quotes
 ```
 
 ### Question-design rules (workshop scope)
 
-1. Produce **10-16 questions total** (aim ~12 for 90 min). Every question
-   targets **one role title** drawn from `clientAttendees` or
-   `agencyAttendees`. `targetRole` must match a `title` verbatim. If a
-   role appears on both sides, prefer the **client** side.
-2. Every question has an **intent tag**, one of:
+The route picks a **per-workshop profile** (kickoff / governance /
+high-level-journey / channel / journey-deep-dive / tech-deep-dive /
+audit-readout / definition / generic-discovery) and tells you the
+volume floor for that profile. Read the
+`workshop-questions-generator` skill for the per-profile playbooks.
+
+1. **Pass A first, Pass B optional.** Open conversational questions
+   come first. Layer intent / phase / topic silos only when the
+   profile calls for them. Don't force the 8-intent taxonomy onto every
+   workshop.
+2. **Volume is a FLOOR, not a ceiling.** The profile gives a per-workshop
+   minimum (e.g., kickoff ≥ 15, channel ≥ 20, journey-deep-dive ≥ 25,
+   tech-deep-dive ≥ 30). Never return fewer. When brief or research
+   evidence support more good questions, write more — distinct, sharp,
+   no padding.
+3. **One role per question.** `targetRole` must match a `title` verbatim
+   from `clientAttendees` or `agencyAttendees`. If a role appears on
+   both sides, prefer the **client** side. When no attendees are
+   listed, fall back to `"(any attendee)"`. Distribute questions across
+   roles — a workshop where every question goes to one person is an
+   interview, not a workshop.
+4. Every question has an **intent tag**, one of:
    `context` | `problem` | `jtbd` | `circumstance` | `need` |
-   `opportunity` | `gap` | `contradiction`.
-3. If journey phases are provided, tag each question with the
-   `journeyPhase` it probes (use the **exact label**). Omit the field
-   for phase-agnostic questions.
-4. **Balance intents.** For ~12 questions: ~1 context, ~3 problem,
-   ~2 jtbd, ~2 circumstance, ~1 need, ~1 opportunity, ~1 gap, ~1
-   contradiction. Adjust within bounds based on the workshop's phase:
-   Discovery → lean problem / jtbd / circumstance; Alignment → lean gap
-   / contradiction; Strategy → lean need / opportunity.
-5. **Contradiction questions go last** in the order. They land after
-   trust and context are established.
-6. **General phrasing, specific aim.** Follow the intent-specific phrasing
-   patterns in the `workshop-questions-generator` skill. Ground every
-   question in the engagement — weave in the industry, persona labels,
-   product names, and known pain points. A question that could apply to
-   any client is a failed question.
+   `opportunity` | `gap` | `contradiction`. `context` is the safe
+   default for open questions. **No fixed intent ratio.**
+5. If journey phases are provided, tag each question with the
+   `journeyPhase` it probes (use the **exact label**). For
+   journey-deep-dive workshops with a supplied phase, **every** question
+   must carry that phase label.
+6. **Contradiction questions go last** in the order.
+7. **Open framing, never narrow framing.** Don't phrase questions as
+   "the last X", "the biggest Y", "the top Z" when you really want to
+   hear about all of them. Ask about "your integrations", "the pain
+   points in this phase", "the kinds of X you see".
+8. **Ground every question.** Weave in the industry, persona labels,
+   product names, and known pain points. When research evidence is
+   supplied, prefer the language and named pains/opportunities from
+   that evidence.
+9. **Provenance is required.** Every question carries:
+   - `sourceContext`: `"form"` | `"brief"` | `"research"` | `"mixed"`.
+   - `sourceCitations` (REQUIRED whenever `sourceContext` !== `"form"`):
+     - `briefExcerpt` — ≤200-char verbatim snippet from the brief.
+     - `researchDocId` — must equal the exact id of one of the supplied
+       research docs. **Never invent ids.**
+     - `researchExcerpt` — ≤200-char verbatim snippet from that doc.
+   When `sourceContext` is `"form"`, you may omit `sourceCitations`.
 
 ### Output format (workshop scope)
 
@@ -260,24 +295,30 @@ Return ONLY valid JSON:
   "questions": [
     {
       "targetRole": "Head of CRM",
-      "text": "Walk me through the last three customers who churned in their first 90 days — what did they have in common?",
+      "text": "Walk us through where new customers fall out in the first 90 days — across segments, devices, and reasons you've seen.",
       "intent": "problem",
       "journeyPhase": "Onboarding",
-      "rationale": "Frontline churn patterns are the sharpest signal of lifecycle gaps."
+      "rationale": "Frontline churn patterns are the sharpest signal of lifecycle gaps.",
+      "sourceContext": "research",
+      "sourceCitations": {
+        "researchDocId": "doc_abc123",
+        "researchExcerpt": "First-90-day churn clusters in mobile-only sign-ups; 38% never open the second message."
+      }
     },
     {
       "targetRole": "Head of CX",
       "text": "What has to be true in a guest's day — weather, stress, kids along — for them to even reach for the park app before arrival?",
       "intent": "circumstance",
       "journeyPhase": "Pre-Arrival",
-      "rationale": "The triggering conditions reveal which Pre-Arrival circumstances the CRM should address."
+      "rationale": "The triggering conditions reveal which Pre-Arrival circumstances the CRM should address.",
+      "sourceContext": "form"
     }
   ]
 }
 ```
 
-No prose, no markdown — just the JSON object. The `journeyPhase` field
-is optional.
+No prose, no markdown — just the JSON object. `journeyPhase` is optional
+unless the workshop is a journey-deep-dive with a supplied phase.
 
 ---
 

@@ -10,8 +10,12 @@ async function parseFile(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer());
 
   if (name.endsWith('.pdf')) {
-    // Dynamic import — keeps pdf-parse out of the edge/client bundle
-    const mod = await import('pdf-parse');
+    // Dynamic import of the *inner* parser — pdf-parse@1.1.1's index.js has
+    // a well-known startup bug that reads a test fixture when bundlers
+    // bypass its `module.parent` guard. Importing the lib file directly
+    // avoids that path entirely.
+    // @ts-expect-error — no types for the inner module path
+    const mod = await import('pdf-parse/lib/pdf-parse.js');
     const pdfParse = (mod as unknown as { default: (b: Buffer) => Promise<{ text: string }> })
       .default;
     const result = await pdfParse(buffer);

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 
 export interface ThemeConfig {
-  theme: 'linear' | 'editorial' | 'ei';
+  theme: 'dark' | 'editorial' | 'ei';
   density: 'compact' | 'comfy' | 'spacious';
   bg: 'dots' | 'grid' | 'plain';
   accent: string | null;
@@ -11,7 +11,7 @@ export interface ThemeConfig {
 }
 
 const DEFAULT_THEME: ThemeConfig = {
-  theme: 'linear',
+  theme: 'dark',
   density: 'comfy',
   bg: 'dots',
   accent: null,

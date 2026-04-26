@@ -1,0 +1,70 @@
+{
+  "name": "Phase-scoped UX problems",
+  "description": "UI / agent-workflow problems must map to specific phases, not be silently dumped into cross-cutting.",
+  "endpoint": "/api/classify-problems",
+  "request": {
+    "model": "gpt-4o",
+    "problems": [
+      {
+        "signalId": "u-001",
+        "text": "The onboarding form has 14 required fields and most users drop off at field 8.",
+        "department": "Product",
+        "sourceWorkshops": ["Onboarding UX review"]
+      },
+      {
+        "signalId": "u-002",
+        "text": "Service agents take 4 minutes per case to find renewal eligibility because it's buried under three tabs.",
+        "department": "Service",
+        "sourceWorkshops": ["Renewal handling deep-dive"]
+      },
+      {
+        "signalId": "u-003",
+        "text": "The post-purchase confirmation page never shows the delivery date, so customers immediately call support.",
+        "department": "Service",
+        "sourceWorkshops": ["Post-purchase contact-driver review"]
+      }
+    ],
+    "journeyPhases": [
+      {
+        "id": "ph-onboard",
+        "label": "Onboarding",
+        "description": "New customer is setting up their account and entering core profile data.",
+        "trigger": "Account creation completes"
+      },
+      {
+        "id": "ph-renew",
+        "label": "Renewal",
+        "description": "Customer evaluates whether to renew the relationship.",
+        "trigger": "60 days before contract end"
+      },
+      {
+        "id": "ph-post-purchase",
+        "label": "Post-Purchase",
+        "description": "Order is placed and customer awaits fulfilment.",
+        "trigger": "Order confirmation"
+      }
+    ]
+  },
+  "expected": {
+    "arrayPath": "diagnostics",
+    "keyField": "problemSignalId",
+    "compareFields": ["discipline", "affectedPhaseIds"],
+    "items": [
+      {
+        "problemSignalId": "u-001",
+        "discipline": "ux-ui",
+        "affectedPhaseIds": ["ph-onboard"]
+      },
+      {
+        "problemSignalId": "u-002",
+        "discipline": "cx-human",
+        "affectedPhaseIds": ["ph-renew"]
+      },
+      {
+        "problemSignalId": "u-003",
+        "discipline": "ux-ui",
+        "affectedPhaseIds": ["ph-post-purchase"]
+      }
+    ]
+  }
+}

@@ -1,5 +1,8 @@
 # Demand Space Generation
 
+## Decision principles
+Before creating any new skill or sub-agent — or recommending one in a plan — read `.claude/principles/subagents-vs-skills.md` and apply its rules. This is non-negotiable. The file defines: when to use a sub-agent (noisy ops, parallel investigation, independent verification, specialist roles, early-session context preservation), when to use a skill instead (stable taxonomy/format/persona knowledge), when to use neither, and the difference between sub-agents and Agent Teams. It also pins this codebase's specific application notes (e.g. runtime LLM calls from Next.js are not sub-agents).
+
 ## Who I am
 - Product manager at Digitas, behavioral strategy background
 - Can read and understand code; prefer not to write it

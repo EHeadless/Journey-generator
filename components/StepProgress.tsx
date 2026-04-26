@@ -9,21 +9,55 @@ interface StepConfig {
   route: (modelId: string) => string;
 }
 
+/**
+ * The landscape has two states now:
+ * - hypothesis-landscape: generated from brief only (evidence: 'brief-only')
+ * - evidenced-landscape: regenerated with discovery evidence (evidence: 'discovery-refined')
+ *
+ * Backward compatibility: Legacy models may have `currentStep: 'landscape'`
+ * persisted. The workspace page dynamically determines which landscape step
+ * to render based on hasDiscoveryBundle, so old models will display correctly.
+ */
 const STEPS: StepConfig[] = [
   { key: 'brief', label: 'Brief', route: () => `/new` },
   {
-    // Internal step key stays `plan` for backwards compatibility with any
-    // persisted model.currentStep values; only the user-facing label
-    // changes. The page under /model/[id]/plan hosts both Discovery and
-    // Definition workshop sections.
-    key: 'plan',
-    label: 'Discovery & Definition',
-    route: (id) => `/model/${id}/plan`,
+    key: 'research',
+    label: 'Research',
+    route: (id) => `/model/${id}/research`,
+  },
+  {
+    key: 'hypothesis-landscape',
+    label: 'Hypothesis Landscape',
+    route: (id) => `/model/${id}`,
+  },
+  {
+    key: 'discovery',
+    label: 'Discovery',
+    route: (id) => `/model/${id}/discovery`,
   },
   { key: 'capture', label: 'Capture', route: (id) => `/model/${id}/capture` },
+  {
+    key: 'diagnostics',
+    label: 'Problem Diagnostics',
+    route: (id) => `/model/${id}/diagnostics`,
+  },
+  {
+    key: 'informed-landscape',
+    label: 'Informed Landscape',
+    route: (id) => `/model/${id}/informed-landscape`,
+  },
+  {
+    key: 'definition',
+    label: 'Definition',
+    route: (id) => `/model/${id}/definition`,
+  },
   { key: 'signals', label: 'Signals', route: (id) => `/model/${id}/signals` },
   { key: 'review', label: 'Review', route: (id) => `/model/${id}/review` },
-  { key: 'landscape', label: 'Landscape', route: (id) => `/model/${id}` },
+  {
+    key: 'evidenced-landscape',
+    label: 'Evidenced Landscape',
+    route: (id) => `/model/${id}`,
+  },
 ];
 
 interface StepProgressProps {
@@ -31,6 +65,11 @@ interface StepProgressProps {
   modelId: string;
   signalsCount?: number;
   hasDiscoveryBundle?: boolean;
+  /**
+   * True when at least one classified problem exists for this model.
+   * Gates the Informed Landscape step.
+   */
+  hasDiagnostics?: boolean;
 }
 
 export function StepProgress({
@@ -38,12 +77,14 @@ export function StepProgress({
   modelId,
   signalsCount = 0,
   hasDiscoveryBundle = false,
+  hasDiagnostics = false,
 }: StepProgressProps) {
   const currentIndex = STEPS.findIndex((s) => s.key === currentStep);
 
   const isStepDisabled = (step: ConsultancyStep) => {
     if (step === 'review' && signalsCount === 0) return true;
-    if (step === 'landscape' && !hasDiscoveryBundle) return true;
+    if (step === 'evidenced-landscape' && !hasDiscoveryBundle) return true;
+    if (step === 'informed-landscape' && !hasDiagnostics) return true;
     return false;
   };
 

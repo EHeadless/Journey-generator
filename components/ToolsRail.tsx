@@ -75,36 +75,48 @@ function JourneyPanel() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // For this release we synthesize a single v1 entry from the current
-  // model. Versioning proper lands later, when new snapshots are taken
-  // as the engagement progresses through discovery steps. For now v1
-  // *is* the current state — Zustand's persist middleware keeps it in
-  // localStorage across reloads.
+  // The landscape has two states:
+  // - v1 hypothesis: generated from brief only (evidence: 'brief-only')
+  // - v2 evidenced: regenerated with discovery evidence (evidence: 'discovery-refined')
+  // Both states live in the same model; the version you see depends on whether
+  // a discovery bundle has been approved. For now we show both versions in the
+  // stack, with the active one determined by hasDiscoveryBundle.
   const versions = useMemo(() => {
     if (!model) return [];
     const hasLandscape =
       (model.journeyPhases?.length ?? 0) > 0 ||
       (model.demandSpaces?.length ?? 0) > 0;
+    const hasBundle = !!model.discoveryBundle;
+
     return [
       {
         id: 'v1',
         label: 'v1',
-        caption: hasLandscape ? 'from brief · saved' : 'no landscape yet',
-        selected: true,
+        caption: hasLandscape ? 'hypothesis · from brief' : 'no landscape yet',
+        selected: !hasBundle,
       },
+      ...(hasBundle
+        ? [
+            {
+              id: 'v2',
+              label: 'v2',
+              caption: 'evidenced · discovery-refined',
+              selected: true,
+            },
+          ]
+        : []),
     ];
   }, [model]);
 
-  // Clicking a version loads the landscape at that version. Today v1 *is*
-  // the current landscape so we just jump back to the workspace — giving
-  // the user a visible "take me to the saved landscape" affordance even
-  // from pages deep in the consultancy flow (Plan, Capture, Signals…).
+  // Clicking a version loads the landscape. Both v1 (hypothesis) and v2
+  // (evidenced) point to the same workspace route; the page determines which
+  // state to render based on hasDiscoveryBundle. This gives users a visible
+  // "take me to the landscape" affordance from pages deep in the consultancy
+  // flow (Plan, Capture, Signals…).
   const handleVersionClick = (versionId: string) => {
     if (!model) return;
-    if (versionId === 'v1') {
-      const target = `/model/${model.id}`;
-      if (pathname !== target) router.push(target);
-    }
+    const target = `/model/${model.id}`;
+    if (pathname !== target) router.push(target);
   };
 
   return (
@@ -120,8 +132,8 @@ function JourneyPanel() {
           className="text-[11px] mt-1"
           style={{ color: 'var(--fg-2)', opacity: 0.8 }}
         >
-          Each version captures the landscape at a point in time. v1 is
-          the live landscape — edits save straight into it.
+          The landscape evolves as evidence accumulates. v1 is the hypothesis
+          from the brief. v2 is evidenced, refined with discovery.
         </div>
       </div>
 
@@ -133,7 +145,9 @@ function JourneyPanel() {
             onClick={() => handleVersionClick(v.id)}
             title={
               v.id === 'v1'
-                ? 'Open the saved landscape (v1). Edits you make on the workspace stay in v1.'
+                ? 'Open hypothesis landscape (v1) — generated from the brief only'
+                : v.id === 'v2'
+                ? 'Open evidenced landscape (v2) — refined with discovery evidence'
                 : undefined
             }
             className="w-full text-left rounded-lg px-3 py-2.5 transition-colors cursor-pointer"

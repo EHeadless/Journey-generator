@@ -1,0 +1,24 @@
+{
+  "name": "Airline — Pre-Booking phase",
+  "description": "High-stakes industry where motivations should orbit around trip purpose, route confidence, and trade-offs (price vs schedule vs flexibility).",
+  "endpoint": "/api/generate-demand-spaces",
+  "rubricFile": "demand-space.md",
+  "extractPath": "demandSpaces",
+  "request": {
+    "input": {
+      "experienceTypes": ["marketing"],
+      "industry": "Airline",
+      "businessDescription": "International full-service airline operating long-haul and short-haul routes for leisure, business, and family travellers.",
+      "channels": ["website", "mobile app", "email", "in-airport"],
+      "painPoints": "High abandonment in shopping flow when itinerary requires a connection. Loyalty members frustrated by inability to combine miles + cash."
+    },
+    "journeyPhase": {
+      "id": "ph-pre-booking",
+      "journeyId": "j-main",
+      "label": "Pre-Booking",
+      "description": "Customer is exploring destinations, comparing routes/dates, and shaping intent before committing to a fare.",
+      "trigger": "Visits website/app or sees an inspirational ad",
+      "order": 1
+    }
+  }
+}

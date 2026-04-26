@@ -52,7 +52,7 @@ const PROFILE_SPECS: Record<WorkshopProfile, ProfileSpec> = {
   kickoff: {
     id: 'kickoff',
     label: 'Kick-off / objectives',
-    target: '15-25 questions',
+    target: 'AT LEAST 15 questions (floor — go to 25+ if the brief or research support it)',
     passA:
       'All open questions, no intent forcing. Cover: business objectives (next 6/12/24 months), pain points leadership already sees, opportunity sizing, benchmarks and competitors, success criteria for this engagement, decision rights and executive sponsors, constraints (regulatory/political/timing), and what would make this engagement a failure.',
     passB:
@@ -61,7 +61,7 @@ const PROFILE_SPECS: Record<WorkshopProfile, ProfileSpec> = {
   governance: {
     id: 'governance',
     label: 'Governance / delivery',
-    target: '15-25 questions',
+    target: 'AT LEAST 15 questions (floor — go to 25+ if evidence supports it)',
     passA:
       '5-8 open questions on how the client already runs complex programmes.',
     passB:
@@ -71,7 +71,7 @@ const PROFILE_SPECS: Record<WorkshopProfile, ProfileSpec> = {
     id: 'high-level-journey',
     label: 'High-level journey',
     target:
-      '5-8 open questions + repeat probe set for every phase (typically 25-40 questions total for a 5-phase journey)',
+      'AT LEAST 5-8 open questions + the full probe set for every phase supplied (a 5-phase journey should yield 25+ questions; never fewer than the floor)',
     passA:
       '5-8 open questions on the journey as a whole — who takes it, how often, what shape it has.',
     passB:
@@ -80,7 +80,7 @@ const PROFILE_SPECS: Record<WorkshopProfile, ProfileSpec> = {
   channel: {
     id: 'channel',
     label: 'Channel / product',
-    target: '20-30 questions',
+    target: 'AT LEAST 20 questions (floor — go to 30+ if the brief or research support it)',
     passA:
       '5-8 open questions on the channel/product overall — who uses it, what it is trying to do, what they are proud of, what they are embarrassed by.',
     passB:
@@ -89,7 +89,7 @@ const PROFILE_SPECS: Record<WorkshopProfile, ProfileSpec> = {
   'journey-deep-dive': {
     id: 'journey-deep-dive',
     label: 'Journey deep-dive (single phase)',
-    target: '25-40 questions for the selected phase',
+    target: 'AT LEAST 25 questions for the selected phase (floor — go to 40+ if research surfaces more pains/opps)',
     passA:
       '5-8 open questions on the selected phase generally — who it matters to, how often customers hit it, what makes it hard.',
     passB:
@@ -98,7 +98,7 @@ const PROFILE_SPECS: Record<WorkshopProfile, ProfileSpec> = {
   'tech-deep-dive': {
     id: 'tech-deep-dive',
     label: 'Tech deep-dive',
-    target: '30-50 questions',
+    target: 'AT LEAST 30 questions (floor — go to 50+ when the stack is broad)',
     passA:
       '5-8 open questions on the stack overall — what they are proud of, what keeps them up at night, what they would rebuild if they could.',
     passB:
@@ -107,7 +107,7 @@ const PROFILE_SPECS: Record<WorkshopProfile, ProfileSpec> = {
   'audit-readout': {
     id: 'audit-readout',
     label: 'Current-state audit readout',
-    target: '15-25 questions',
+    target: 'AT LEAST 15 questions (floor — go to 25+ if the audit surfaces more)',
     passA:
       '4-6 open questions framing what the audit covers and how it was built.',
     passB:
@@ -116,7 +116,7 @@ const PROFILE_SPECS: Record<WorkshopProfile, ProfileSpec> = {
   definition: {
     id: 'definition',
     label: 'Definition workshop',
-    target: '15-25 questions',
+    target: 'AT LEAST 15 questions (floor — go to 25+ if scope is wide)',
     passA:
       '4-6 open questions on the workstream overall.',
     passB:
@@ -125,7 +125,7 @@ const PROFILE_SPECS: Record<WorkshopProfile, ProfileSpec> = {
   'generic-discovery': {
     id: 'generic-discovery',
     label: 'Generic discovery',
-    target: '12-20 questions',
+    target: 'AT LEAST 12 questions (floor — go to 20+ when the brief is rich)',
     passA: '6-10 open questions grounded in the brief.',
     passB:
       'Optional intent silo (context → problem → jtbd → circumstance → need → opportunity → gap → contradiction) — only use the intents that sharpen this particular workshop. Contradictions go last.',
@@ -192,6 +192,25 @@ specific workshop, following the **workshop-questions-generator** skill.
    MUST carry that phase label.
 7. Include a brief \`rationale\` per question so the facilitator knows
    why we are asking and what signal we are fishing for.
+8. **Volume is a FLOOR, not a ceiling.** The profile gives a minimum.
+   Never return fewer than the floor. If the brief or research evidence
+   support more good questions, write more — pad-free, distinct, sharp.
+9. **Provenance is required.** Every question carries:
+   - \`sourceContext\`: \`"form"\` | \`"brief"\` | \`"research"\` | \`"mixed"\`.
+     Use \`"form"\` for questions you could have written from the
+     structured brief form alone, \`"brief"\` for questions inspired by
+     the verbatim brief document, \`"research"\` for questions inspired
+     by an uploaded research artifact, and \`"mixed"\` when more than one
+     source contributed.
+   - \`sourceCitations\` (REQUIRED whenever \`sourceContext\` !== \`"form"\`):
+     - \`briefExcerpt\`: ≤200-char verbatim snippet from the brief that
+       seeded the question (omit when the brief was not the source).
+     - \`researchDocId\`: the exact \`id\` of the research document the
+       evidence came from (must match one of the supplied research doc
+       ids — do NOT invent ids).
+     - \`researchExcerpt\`: ≤200-char verbatim snippet from the research
+       summary or quote list backing the question.
+   When \`sourceContext\` is \`"form"\`, you may omit \`sourceCitations\`.
 
 ## Intent vocabulary (reference — not a required ratio)
 
@@ -217,7 +236,8 @@ specific workshop, following the **workshop-questions-generator** skill.
 Every question must include at least one of: a product/channel name
 from the brief, a persona label, a pain point phrase, a specific metric
 or artifact, or an industry-specific detail. Generic cross-client
-questions are failures.
+questions are failures. When research evidence is supplied, prefer
+language drawn from that evidence over generic phrasing.
 
 ## Output format
 
@@ -231,7 +251,12 @@ Return ONLY a valid JSON object:
       "text": "…",
       "intent": "problem",
       "journeyPhase": "Onboarding",
-      "rationale": "…"
+      "rationale": "…",
+      "sourceContext": "research",
+      "sourceCitations": {
+        "researchDocId": "doc_abc123",
+        "researchExcerpt": "First-time guests reported confusion picking up tickets at gate."
+      }
     }
   ]
 }
@@ -256,6 +281,30 @@ interface RawQuestion {
   intent?: string;
   journeyPhase?: string;
   rationale?: string;
+  sourceContext?: string;
+  sourceCitations?: {
+    briefExcerpt?: string;
+    researchDocId?: string;
+    researchExcerpt?: string;
+  };
+}
+
+const ALLOWED_SOURCE_CONTEXTS = new Set([
+  'form',
+  'brief',
+  'research',
+  'mixed',
+] as const);
+
+const MAX_BRIEF_PROMPT_CHARS = 18_000;
+const MAX_RESEARCH_DOC_PROMPT_CHARS = 4_000;
+const MAX_CITATION_CHARS = 240;
+
+function clipCitation(s: string): string {
+  const trimmed = s.replace(/\s+/g, ' ').trim();
+  return trimmed.length > MAX_CITATION_CHARS
+    ? trimmed.slice(0, MAX_CITATION_CHARS - 1) + '…'
+    : trimmed;
 }
 
 interface RequestBody extends Partial<ModelInput> {
@@ -311,6 +360,8 @@ export async function POST(request: NextRequest) {
       painPoints,
       products,
       techStack,
+      briefDocument,
+      researchDocuments,
     } = body;
 
     if (!apiKey) {
@@ -395,6 +446,65 @@ ${techStack.aiModels?.length ? `- AI Models: ${formatTools(techStack.aiModels)}`
       ? `\nKnown Pain Points:\n${painPoints}`
       : '';
 
+    // Brief and research documents — inject them as labelled blocks so
+    // the model can ground questions in their language and cite back.
+    const hasBrief = !!briefDocument?.text?.trim();
+    const briefBlock = hasBrief
+      ? `\n\n=== VERBATIM CLIENT BRIEF (filename: ${briefDocument!.filename}) ===\n${briefDocument!.text.slice(0, MAX_BRIEF_PROMPT_CHARS)}\n=== END BRIEF ===`
+      : '';
+
+    const validResearchDocs = (researchDocuments || []).filter(
+      (d) => d && d.id && (d.summary?.summary?.trim() || d.text?.trim())
+    );
+    const knownResearchDocIds = new Set(validResearchDocs.map((d) => d.id));
+    const hasResearch = validResearchDocs.length > 0;
+    const researchBlock = hasResearch
+      ? `\n\n=== RESEARCH EVIDENCE (${validResearchDocs.length} doc${
+          validResearchDocs.length === 1 ? '' : 's'
+        }) ===\n${validResearchDocs
+          .map((d) => {
+            const s = d.summary;
+            const headline = s?.headline ? `Headline: ${s.headline}\n` : '';
+            const findings =
+              s?.keyFindings?.length
+                ? `Key findings:\n${s.keyFindings.map((f) => `  - ${f}`).join('\n')}\n`
+                : '';
+            const pains =
+              s?.painsAndFrictions?.length
+                ? `Pains & frictions:\n${s.painsAndFrictions
+                    .map((p) => `  - ${p}`)
+                    .join('\n')}\n`
+                : '';
+            const opps =
+              s?.opportunitiesOrHypotheses?.length
+                ? `Opportunities / hypotheses:\n${s.opportunitiesOrHypotheses
+                    .map((o) => `  - ${o}`)
+                    .join('\n')}\n`
+                : '';
+            const quotes =
+              s?.directQuotes?.length
+                ? `Quotes:\n${s.directQuotes
+                    .slice(0, 6)
+                    .map((q) => `  · "${q}"`)
+                    .join('\n')}\n`
+                : '';
+            const prose = s?.summary
+              ? `Summary: ${s.summary}\n`
+              : `Excerpt: ${(d.text || '').slice(0, MAX_RESEARCH_DOC_PROMPT_CHARS)}\n`;
+            return `--- Research doc id: ${d.id} (filename: ${d.filename}) ---\n${headline}${prose}${findings}${pains}${opps}${quotes}`.trim();
+          })
+          .join('\n\n')}\n=== END RESEARCH ===`
+      : '';
+
+    const sourcesBanner = `\n\nSOURCES IN SCOPE: form fields${
+      hasBrief ? ', verbatim brief' : ''
+    }${hasResearch ? `, research evidence (${validResearchDocs.length} docs)` : ''}.
+Use the \`sourceContext\` field on every question to indicate which source seeded it. When you cite the brief, supply \`sourceCitations.briefExcerpt\` (≤200 chars). When you cite research, supply \`sourceCitations.researchDocId\` (must be one of: ${
+      hasResearch
+        ? validResearchDocs.map((d) => d.id).join(', ')
+        : '— no research available'
+    }) and \`sourceCitations.researchExcerpt\` (≤200 chars).`;
+
     const prompt = `Generate the question inventory for this workshop.
 
 Workshop:
@@ -409,8 +519,9 @@ ${attendeeList}
 
 ## Profile for this workshop: ${profile.label}
 
-**Target volume:** ${profile.target}. Do not cap yourself below this
-range. If the brief supports more good questions, write more.
+**Target volume (FLOOR — never go below):** ${profile.target}.
+Volume is a floor, not a ceiling. If the brief or research support more
+good questions, write more — distinct, sharp, no padding.
 
 **Pass A (open questions, always first):** ${profile.passA}
 
@@ -420,10 +531,11 @@ Engagement context:
   Industry: ${industry || 'Not specified'}
   Experience Types: ${(experienceTypes || []).join(', ') || 'Not specified'}
   Business Description: ${businessDescription || 'Not specified'}
-${techStackContext}${productsContext}${personasContext}${painPointsContext}${phaseContext}${selectedPhaseContext}
+${techStackContext}${productsContext}${personasContext}${painPointsContext}${phaseContext}${selectedPhaseContext}${sourcesBanner}${briefBlock}${researchBlock}
 
-Order: Pass A first, then Pass B. Contradictions last (if used). Return
-only the JSON object.`;
+Order: Pass A first, then Pass B. Contradictions last (if used). Every
+question must include \`sourceContext\` and (unless sourceContext is
+"form") matching \`sourceCitations\`. Return only the JSON object.`;
 
     const raw = await generateWithRetry<
       { questions?: RawQuestion[] } | RawQuestion[]
@@ -466,12 +578,64 @@ only the JSON object.`;
             : undefined;
       }
 
+      // Validate provenance. If the model named a sourceContext that
+      // requires evidence we didn't actually pass in, downgrade to
+      // 'form' so the chip never lies.
+      let sourceContext:
+        | WorkshopQuestion['sourceContext']
+        | undefined;
+      const claimed = (q.sourceContext || '').toLowerCase();
+      if (
+        ALLOWED_SOURCE_CONTEXTS.has(
+          claimed as 'form' | 'brief' | 'research' | 'mixed'
+        )
+      ) {
+        sourceContext = claimed as WorkshopQuestion['sourceContext'];
+      } else {
+        // No claim — infer from what evidence we actually shipped to the
+        // model, defaulting to 'form'.
+        sourceContext = 'form';
+      }
+      if (sourceContext === 'brief' && !hasBrief) sourceContext = 'form';
+      if (sourceContext === 'research' && !hasResearch) sourceContext = 'form';
+      if (sourceContext === 'mixed' && !hasBrief && !hasResearch)
+        sourceContext = 'form';
+
+      // Validate citations. Drop research citations whose docId we
+      // don't recognise — never trust an invented id downstream.
+      let sourceCitations: WorkshopQuestion['sourceCitations'] | undefined;
+      const rawCit = q.sourceCitations;
+      if (rawCit && sourceContext !== 'form') {
+        const briefExcerpt =
+          typeof rawCit.briefExcerpt === 'string' && hasBrief
+            ? clipCitation(rawCit.briefExcerpt)
+            : undefined;
+        const researchDocId =
+          typeof rawCit.researchDocId === 'string' &&
+          knownResearchDocIds.has(rawCit.researchDocId)
+            ? rawCit.researchDocId
+            : undefined;
+        const researchExcerpt =
+          typeof rawCit.researchExcerpt === 'string' && researchDocId
+            ? clipCitation(rawCit.researchExcerpt)
+            : undefined;
+        if (briefExcerpt || researchDocId || researchExcerpt) {
+          sourceCitations = {
+            ...(briefExcerpt ? { briefExcerpt } : {}),
+            ...(researchDocId ? { researchDocId } : {}),
+            ...(researchExcerpt ? { researchExcerpt } : {}),
+          };
+        }
+      }
+
       return {
         targetRole: q.targetRole || '(any attendee)',
         text: q.text || '',
         intent,
         ...(journeyPhase ? { journeyPhase } : {}),
         rationale: q.rationale,
+        sourceContext,
+        ...(sourceCitations ? { sourceCitations } : {}),
       };
     });
 

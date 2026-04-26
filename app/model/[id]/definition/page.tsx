@@ -18,7 +18,7 @@
  *     bottom line appears on hover/focus to hint editability. Feels like
  *     writing in a doc rather than filling a form.
  *   • Every label uses --fg-2 (not --fg-3) for readability on both
- *     Editorial (white) and Linear (dark) themes.
+ *     Editorial (white) and Dark themes.
  *   • The "Seed default plan" button drops in a full 22-workshop
  *     baseline — 13 Discovery + 9 Definition — as the agency standard
  *     starting point for a CX engagement. Per-journey and per-product
@@ -46,6 +46,8 @@ import {
 import { useStore } from '@/lib/store';
 import { StepProgress } from '@/components/StepProgress';
 import { AppHeader } from '@/components/AppHeader';
+import { useHydratedCaptureStore } from '@/components/capture/CaptureWorkshopCard';
+import { useHasDiagnostics } from '@/lib/captureStore';
 import { useApiKey } from '@/lib/hooks/useApiKey';
 import {
   exportWorkshopToXlsx,
@@ -293,7 +295,7 @@ function PlainSelect<T extends string>({
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-2"
+      className="text-[10px] font-black uppercase tracking-[0.2em] mb-2"
       style={{ color: 'var(--fg-2)' }}
     >
       {children}
@@ -1027,7 +1029,7 @@ function AgendaPanel({
           No agenda yet.
         </div>
       ) : (
-        <ol className="space-y-0.5">
+        <ol className="agenda-timeline">
           {workshop.agenda.map((a, idx) => (
             <AgendaRow
               key={a.id}
@@ -1055,47 +1057,49 @@ function AgendaRow({
   onRemove: () => void;
 }) {
   return (
-    <li
-      className="group flex items-center gap-3 py-1.5 px-2 rounded"
-      style={{ color: 'var(--fg-1)' }}
-    >
-      <span
-        className="flex-shrink-0 text-[11px] font-mono w-6 text-right"
-        style={{ color: 'var(--fg-2)' }}
-      >
-        {idx.toString().padStart(2, '0')}
-      </span>
-      <PlainInput
-        value={item.label}
-        onChange={(v) => onChange({ label: v })}
-        placeholder="Slot label"
-        className="flex-1"
-      />
-      <PlainInput
-        value={item.duration || ''}
-        onChange={(v) => onChange({ duration: v })}
-        placeholder="—"
-        className="plan-input--duration"
-        style={{ width: 64, textAlign: 'right' }}
-      />
-      <span className="text-[11px]" style={{ color: 'var(--fg-3)' }}>
-        min
-      </span>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{
-          background: 'transparent',
-          border: 'none',
-          color: 'var(--fg-2)',
-          cursor: 'pointer',
-          padding: 4,
-        }}
-        aria-label="Remove slot"
-      >
-        <X size={12} />
-      </button>
+    <li className="agenda-timeline-item group" style={{ color: 'var(--fg-1)' }}>
+      <div className="agenda-timeline-marker">
+        <span className="agenda-timeline-number">
+          {idx}
+        </span>
+      </div>
+      <div className="agenda-timeline-content">
+        <div className="flex items-center gap-3">
+          <PlainInput
+            value={item.label}
+            onChange={(v) => onChange({ label: v })}
+            placeholder="Slot label"
+            className="flex-1"
+            style={{ fontSize: 14, fontWeight: 600 }}
+          />
+          <div className="flex items-center gap-2">
+            <PlainInput
+              value={item.duration || ''}
+              onChange={(v) => onChange({ duration: v })}
+              placeholder="—"
+              style={{ width: 64, textAlign: 'right' }}
+            />
+            <span className="text-[11px]" style={{ color: 'var(--fg-3)' }}>
+              min
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--fg-2)',
+              cursor: 'pointer',
+              padding: 4,
+            }}
+            aria-label="Remove slot"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      </div>
     </li>
   );
 }
@@ -1138,7 +1142,7 @@ function WorkshopEditor({
   } = useStore();
 
   return (
-    <div className="max-w-3xl mx-auto px-8 py-8">
+    <div className="max-w-4xl mx-auto px-8 py-8">
       {errorMessage && (
         <div
           className="text-sm px-3 py-2 rounded mb-6"
@@ -1153,229 +1157,253 @@ function WorkshopEditor({
         </div>
       )}
 
-      {/* Tiny top row: code + phase + track */}
-      <div
-        className="flex items-center gap-3 text-[12px] mb-2"
-        style={{ color: 'var(--fg-2)' }}
-      >
-        <PlainInput
-          value={workshop.code || ''}
-          onChange={(v) => updateWorkshop(workshop.id, { code: v })}
-          placeholder="W01"
-          style={{ width: 60, fontWeight: 600 }}
-          aria-label="Workshop code"
+      {/* Workshop meta card */}
+      <div className="glass-pane p-8 mb-6 relative overflow-hidden sticky top-0 z-30">
+        {/* Decorative accent circle */}
+        <div
+          className="absolute top-0 right-0 w-32 h-32 rounded-bl-full pointer-events-none"
+          style={{ background: 'rgba(99, 102, 241, 0.05)' }}
         />
-        <span>·</span>
-        <PlainSelect
-          value={workshop.phase}
-          onChange={(v) => updateWorkshop(workshop.id, { phase: v })}
-          options={[
-            ...PHASE_ORDER.map((p) => ({ value: p, label: p })),
-            ...(PHASE_ORDER.includes(workshop.phase)
-              ? []
-              : [{ value: workshop.phase, label: workshop.phase }]),
-          ]}
-          ariaLabel="Phase"
-        />
-        <span>·</span>
-        <PlainInput
-          value={workshop.track || ''}
-          onChange={(v) => updateWorkshop(workshop.id, { track: v })}
-          placeholder="Track / owner"
-          className="flex-1"
-          aria-label="Track"
-        />
-        <button
-          type="button"
-          onClick={() => {
-            if (confirm(`Remove workshop "${workshop.name}"?`)) {
-              removeWorkshop(workshop.id);
-            }
-          }}
-          className="opacity-60 hover:opacity-100 transition-opacity"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--fg-2)',
-            cursor: 'pointer',
-            padding: 4,
-          }}
-          aria-label="Remove workshop"
-          title="Remove workshop"
+
+        {/* Code + breadcrumb row */}
+        <div
+          className="flex items-center gap-3 text-[11px] mb-3"
+          style={{ color: 'var(--fg-2)' }}
         >
-          <Trash2 size={14} />
-        </button>
-      </div>
-
-      {/* Big name */}
-      <input
-        type="text"
-        value={workshop.name}
-        onChange={(e) =>
-          updateWorkshop(workshop.id, { name: e.target.value })
-        }
-        placeholder="Workshop name"
-        className="plan-title"
-        aria-label="Workshop name"
-      />
-
-      {/* Meta chips row: duration, mode, status */}
-      <div
-        className="flex items-center gap-1.5 flex-wrap mt-3 mb-6 text-[12px]"
-        style={{ color: 'var(--fg-2)' }}
-      >
-        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md"
-          style={{ background: 'var(--bg-2)', border: '1px solid var(--border-1)' }}>
-          <Clock size={12} />
-          <PlainInput
-            value={workshop.duration || ''}
-            onChange={(v) => updateWorkshop(workshop.id, { duration: v })}
-            placeholder="90 min"
-            style={{ width: 70 }}
-            aria-label="Duration"
-          />
-        </span>
-
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md"
-          style={{ background: 'var(--bg-2)', border: '1px solid var(--border-1)' }}>
-          <PlainSelect
-            value={workshop.mode || 'hybrid'}
-            onChange={(v) =>
-              updateWorkshop(workshop.id, { mode: v as WorkshopMode })
-            }
-            options={[
-              { value: 'onsite', label: 'Onsite' },
-              { value: 'hybrid', label: 'Hybrid' },
-              { value: 'remote', label: 'Remote' },
-            ]}
-            ariaLabel="Mode"
-          />
-        </span>
-
-        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md"
-          style={{ background: 'var(--bg-2)', border: '1px solid var(--border-1)' }}>
           <span
-            className="inline-block"
+            className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-[11px] font-bold"
             style={{
-              width: 8,
-              height: 8,
-              borderRadius: 999,
-              background: STATUS_DOT[workshop.status],
+              background: 'var(--accent)',
+              color: 'var(--accent-fg)',
             }}
-          />
+          >
+            <PlainInput
+              value={workshop.code || ''}
+              onChange={(v) => updateWorkshop(workshop.id, { code: v })}
+              placeholder="W01"
+              style={{ width: 40, fontWeight: 700, background: 'transparent', color: 'var(--accent-fg)', border: 'none', textAlign: 'center' }}
+              aria-label="Workshop code"
+            />
+          </span>
+          <span style={{ color: 'var(--fg-3)' }}>→</span>
           <PlainSelect
-            value={workshop.status}
-            onChange={(v) =>
-              updateWorkshop(workshop.id, { status: v as WorkshopStatus })
-            }
-            options={(Object.keys(STATUS_LABEL) as WorkshopStatus[]).map(
-              (s) => ({ value: s, label: STATUS_LABEL[s] })
-            )}
-            ariaLabel="Status"
+            value={workshop.phase}
+            onChange={(v) => updateWorkshop(workshop.id, { phase: v })}
+            options={[
+              ...PHASE_ORDER.map((p) => ({ value: p, label: p })),
+              ...(PHASE_ORDER.includes(workshop.phase)
+                ? []
+                : [{ value: workshop.phase, label: workshop.phase }]),
+            ]}
+            ariaLabel="Phase"
           />
-        </span>
+          <span>/</span>
+          <PlainInput
+            value={workshop.track || ''}
+            onChange={(v) => updateWorkshop(workshop.id, { track: v })}
+            placeholder="Track / owner"
+            className="flex-1"
+            aria-label="Track"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm(`Remove workshop "${workshop.name}"?`)) {
+                removeWorkshop(workshop.id);
+              }
+            }}
+            className="opacity-60 hover:opacity-100 transition-opacity"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--fg-2)',
+              cursor: 'pointer',
+              padding: 4,
+            }}
+            aria-label="Remove workshop"
+            title="Remove workshop"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+
+        {/* Large title */}
+        <input
+          type="text"
+          value={workshop.name}
+          onChange={(e) =>
+            updateWorkshop(workshop.id, { name: e.target.value })
+          }
+          placeholder="Workshop name"
+          className="plan-title"
+          style={{ fontSize: '36px', fontWeight: 800, marginBottom: '16px' }}
+          aria-label="Workshop name"
+        />
+
+        {/* Duration + Mode pills */}
+        <div className="flex items-center gap-2 flex-wrap mb-4">
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[12px] font-semibold border"
+            style={{ background: 'var(--bg-2)', color: 'var(--fg-1)', borderColor: 'var(--border-1)' }}>
+            <Clock size={14} style={{ color: 'var(--fg-2)' }} />
+            <PlainInput
+              value={workshop.duration || ''}
+              onChange={(v) => updateWorkshop(workshop.id, { duration: v })}
+              placeholder="90 min"
+              style={{ width: 70, background: 'transparent', border: 'none', color: 'var(--fg-1)' }}
+              aria-label="Duration"
+            />
+          </span>
+
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[12px] font-semibold border"
+            style={{ background: 'var(--bg-2)', color: 'var(--fg-1)', borderColor: 'var(--border-1)' }}>
+            <PlainSelect
+              value={workshop.mode || 'hybrid'}
+              onChange={(v) =>
+                updateWorkshop(workshop.id, { mode: v as WorkshopMode })
+              }
+              options={[
+                { value: 'onsite', label: 'Onsite' },
+                { value: 'hybrid', label: 'Hybrid' },
+                { value: 'remote', label: 'Remote' },
+              ]}
+              ariaLabel="Mode"
+            />
+          </span>
+
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[12px] font-semibold border"
+            style={{ background: 'var(--bg-2)', color: 'var(--fg-1)', borderColor: 'var(--border-1)' }}>
+            <span
+              className="inline-block"
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 999,
+                background: STATUS_DOT[workshop.status],
+              }}
+            />
+            <PlainSelect
+              value={workshop.status}
+              onChange={(v) =>
+                updateWorkshop(workshop.id, { status: v as WorkshopStatus })
+              }
+              options={(Object.keys(STATUS_LABEL) as WorkshopStatus[]).map(
+                (s) => ({ value: s, label: STATUS_LABEL[s] })
+              )}
+              ariaLabel="Status"
+            />
+          </span>
+        </div>
       </div>
 
-      {/* Summary */}
-      <section className="mb-7">
-        <SectionLabel>Summary</SectionLabel>
-        <PlainTextarea
-          value={workshop.summary}
-          onChange={(v) => updateWorkshop(workshop.id, { summary: v })}
-          placeholder="What this workshop is for and why."
-          rows={2}
-          style={{ fontSize: 14 }}
-        />
-      </section>
+      {/* Summary + Outcomes grid */}
+      <div className="glass-pane p-6 mb-6">
+        <div className="grid grid-cols-2 gap-6">
+          <section>
+            <SectionLabel>Summary</SectionLabel>
+            <PlainTextarea
+              value={workshop.summary}
+              onChange={(v) => updateWorkshop(workshop.id, { summary: v })}
+              placeholder="What this workshop is for and why."
+              rows={3}
+              style={{ fontSize: 14 }}
+            />
+          </section>
 
-      {/* Outcomes */}
-      <section className="mb-7">
-        <SectionLabel>Main outcomes</SectionLabel>
-        <ChipListEditor
-          items={workshop.mainOutcomes}
-          onChange={(next) =>
-            updateWorkshop(workshop.id, { mainOutcomes: next })
-          }
-          placeholder="Concrete deliverable or decision"
-          emptyLabel="No outcomes yet."
-        />
-      </section>
+          <section>
+            <SectionLabel>Main outcomes</SectionLabel>
+            <ChipListEditor
+              items={workshop.mainOutcomes}
+              onChange={(next) =>
+                updateWorkshop(workshop.id, { mainOutcomes: next })
+              }
+              placeholder="Concrete deliverable or decision"
+              emptyLabel="No outcomes yet."
+            />
+          </section>
+        </div>
+      </div>
 
-      {/* Attendees — two columns */}
-      <section className="mb-7 grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
-          <SectionLabel>Client attendees</SectionLabel>
-          <AttendeeEditor
-            attendees={workshop.clientAttendees}
-            onAdd={() => addAttendee(workshop.id, 'client')}
-            onUpdate={(id, updates) =>
-              updateAttendee(workshop.id, 'client', id, updates)
-            }
-            onRemove={(id) => removeAttendee(workshop.id, 'client', id)}
-            addLabel="Add client role"
-            rolePlaceholder="Head of CRM"
-          />
+      {/* Attendee Architecture */}
+      <div className="mb-6">
+        <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-3" style={{ color: 'var(--fg-2)' }}>
+          Attendee Architecture
         </div>
-        <div>
-          <SectionLabel>Agency attendees</SectionLabel>
-          <AttendeeEditor
-            attendees={workshop.agencyAttendees}
-            onAdd={() => addAttendee(workshop.id, 'agency')}
-            onUpdate={(id, updates) =>
-              updateAttendee(workshop.id, 'agency', id, updates)
-            }
-            onRemove={(id) => removeAttendee(workshop.id, 'agency', id)}
-            addLabel="Add agency role"
-            rolePlaceholder="CX Strategist"
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="glass-pane p-5">
+            <SectionLabel>Client attendees</SectionLabel>
+            <AttendeeEditor
+              attendees={workshop.clientAttendees}
+              onAdd={() => addAttendee(workshop.id, 'client')}
+              onUpdate={(id, updates) =>
+                updateAttendee(workshop.id, 'client', id, updates)
+              }
+              onRemove={(id) => removeAttendee(workshop.id, 'client', id)}
+              addLabel="Add client role"
+              rolePlaceholder="Head of CRM"
+            />
+          </div>
+          <div className="glass-pane p-5">
+            <SectionLabel>Agency attendees</SectionLabel>
+            <AttendeeEditor
+              attendees={workshop.agencyAttendees}
+              onAdd={() => addAttendee(workshop.id, 'agency')}
+              onUpdate={(id, updates) =>
+                updateAttendee(workshop.id, 'agency', id, updates)
+              }
+              onRemove={(id) => removeAttendee(workshop.id, 'agency', id)}
+              addLabel="Add agency role"
+              rolePlaceholder="CX Strategist"
+            />
+          </div>
         </div>
-      </section>
+      </div>
 
       {/* Pre-reads + Dependencies */}
-      <section className="mb-7 grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
-          <SectionLabel>Required pre-reads</SectionLabel>
-          <ChipListEditor
-            items={workshop.preReads}
-            onChange={(next) =>
-              updateWorkshop(workshop.id, { preReads: next })
-            }
-            placeholder="Doc title"
-            emptyLabel="Nothing to pre-read."
-          />
+      <div className="glass-pane p-6 mb-6">
+        <div className="grid grid-cols-2 gap-6">
+          <section>
+            <SectionLabel>Required pre-reads</SectionLabel>
+            <ChipListEditor
+              items={workshop.preReads}
+              onChange={(next) =>
+                updateWorkshop(workshop.id, { preReads: next })
+              }
+              placeholder="Doc title"
+              emptyLabel="Nothing to pre-read."
+            />
+          </section>
+          <section>
+            <SectionLabel>Cross-workstream dependencies</SectionLabel>
+            <ChipListEditor
+              items={workshop.dependencies}
+              onChange={(next) =>
+                updateWorkshop(workshop.id, { dependencies: next })
+              }
+              placeholder="Needs W02 complete"
+              emptyLabel="No dependencies."
+            />
+          </section>
         </div>
-        <div>
-          <SectionLabel>Cross-workstream dependencies</SectionLabel>
-          <ChipListEditor
-            items={workshop.dependencies}
-            onChange={(next) =>
-              updateWorkshop(workshop.id, { dependencies: next })
-            }
-            placeholder="Needs W02 complete"
-            emptyLabel="No dependencies."
-          />
-        </div>
-      </section>
+      </div>
 
       {/* Notes */}
-      <section className="mb-9">
+      <div className="glass-pane p-6 mb-6">
         <SectionLabel>Notes</SectionLabel>
         <PlainTextarea
           value={workshop.notes || ''}
           onChange={(v) => updateWorkshop(workshop.id, { notes: v })}
           placeholder="Facilitator notes, logistics, open questions…"
-          rows={2}
+          rows={3}
           style={{ fontSize: 13 }}
         />
-      </section>
+      </div>
 
       {/* Questions */}
-      <section
-        className="mb-9 pt-6"
-        style={{ borderTop: '1px solid var(--border-1)' }}
-      >
-        <div className="flex items-baseline justify-between mb-3">
-          <SectionLabel>Questions ({questions.length})</SectionLabel>
+      <div className="glass-pane p-6 mb-6">
+        <div className="flex items-baseline justify-between mb-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--fg-2)' }}>
+            Questions ({questions.length})
+          </div>
         </div>
         <QuestionsPanel
           key={workshop.id}
@@ -1388,22 +1416,21 @@ function WorkshopEditor({
           onExport={onExportQuestions}
           isGenerating={isGeneratingQuestions}
         />
-      </section>
+      </div>
 
       {/* Agenda */}
-      <section
-        className="pt-6"
-        style={{ borderTop: '1px solid var(--border-1)' }}
-      >
-        <div className="flex items-baseline justify-between mb-3">
-          <SectionLabel>Tentative agenda</SectionLabel>
+      <div className="glass-pane p-6">
+        <div className="flex items-baseline justify-between mb-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--fg-2)' }}>
+            Tentative agenda
+          </div>
         </div>
         <AgendaPanel
           workshop={workshop}
           onGenerate={onGenerateAgenda}
           isGenerating={isGeneratingAgenda}
         />
-      </section>
+      </div>
     </div>
   );
 }
@@ -1458,7 +1485,7 @@ function WorkshopRail({
         style={{ borderBottom: '1px solid var(--border-1)' }}
       >
         <div
-          className="text-[10px] font-semibold uppercase tracking-[0.14em]"
+          className="text-[10px] font-black uppercase tracking-[0.2em]"
           style={{ color: 'var(--fg-2)' }}
         >
           Workshops · {workshops.length}
@@ -1475,9 +1502,9 @@ function WorkshopRail({
 
       <div className="flex-1 overflow-y-auto py-2">
         {groupedByPhase.map(([phase, arr]) => (
-          <div key={phase} className="mb-2">
+          <div key={phase} className="mb-3">
             <div
-              className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider"
+              className="px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em]"
               style={{ color: 'var(--fg-2)' }}
             >
               {phase}
@@ -1496,46 +1523,53 @@ function WorkshopRail({
                   key={w.id}
                   type="button"
                   onClick={() => onSelect(w.id)}
-                  className="w-full text-left px-4 py-2.5 transition-colors"
+                  className="w-full text-left px-4 py-2.5 mb-1 mx-2 rounded-lg transition-all"
                   style={{
-                    background: isActive
-                      ? 'var(--accent-soft)'
-                      : 'transparent',
+                    background: isActive ? 'var(--bg-1)' : 'transparent',
                     borderLeft: isActive
-                      ? '2px solid var(--accent)'
-                      : '2px solid transparent',
+                      ? '3px solid var(--accent)'
+                      : '3px solid transparent',
                     opacity: w.status === 'skipped' ? 0.5 : 1,
+                    width: 'calc(100% - 16px)',
+                    boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'rgba(0,0,0,0.02)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'transparent';
+                    }
                   }}
                 >
-                  <div className="flex items-center gap-2 mb-0.5">
+                  <div className="flex items-center gap-2 mb-1">
                     <span
-                      className="inline-block flex-shrink-0"
+                      className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-bold"
                       style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: 999,
-                        background: STATUS_DOT[w.status],
+                        background: isActive
+                          ? 'var(--accent)'
+                          : 'rgba(0,0,0,0.08)',
+                        color: isActive ? '#ffffff' : 'var(--fg-2)',
                       }}
-                    />
-                    <span
-                      className="text-[11px] font-mono"
-                      style={{ color: 'var(--fg-2)' }}
                     >
                       {w.code || '—'}
                     </span>
-                    {w.duration && (
-                      <span
-                        className="text-[11px]"
-                        style={{ color: 'var(--fg-2)' }}
-                      >
-                        · {w.duration}
-                      </span>
-                    )}
+                    <span
+                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase"
+                      style={{
+                        background: `color-mix(in srgb, ${STATUS_DOT[w.status]} 12%, transparent)`,
+                        color: STATUS_DOT[w.status],
+                      }}
+                    >
+                      {STATUS_LABEL[w.status]}
+                    </span>
                   </div>
                   <div
-                    className="text-[13px] font-medium line-clamp-2"
+                    className="text-[13px] font-bold line-clamp-2 mb-1.5"
                     style={{
-                      color: isActive ? 'var(--fg-1)' : 'var(--fg-1)',
+                      color: 'var(--fg-1)',
                       textDecoration:
                         w.status === 'skipped' ? 'line-through' : undefined,
                     }}
@@ -1543,16 +1577,22 @@ function WorkshopRail({
                     {w.name || 'Untitled workshop'}
                   </div>
                   <div
-                    className="flex items-center gap-2 mt-1 text-[11px]"
-                    style={{ color: 'var(--fg-2)' }}
+                    className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide"
+                    style={{ color: 'var(--fg-3)' }}
                   >
-                    <span>
-                      {w.clientAttendees.length + w.agencyAttendees.length} att
+                    {w.duration && (
+                      <>
+                        <span className="inline-flex items-center gap-1">
+                          <Clock size={10} />
+                          {w.duration}
+                        </span>
+                        <span>·</span>
+                      </>
+                    )}
+                    <span className="inline-flex items-center gap-1">
+                      <Users size={10} />
+                      {w.clientAttendees.length + w.agencyAttendees.length}
                     </span>
-                    <span>·</span>
-                    <span>{qCount} Q</span>
-                    <span>·</span>
-                    <span>{w.agenda.length} slots</span>
                   </div>
                 </button>
               );
@@ -2351,6 +2391,8 @@ export default function PlanPage() {
   const addWorkshop = useStore((s) => s.addWorkshop);
   const setWorkshopQuestions = useStore((s) => s.setWorkshopQuestions);
   const setWorkshopAgenda = useStore((s) => s.setWorkshopAgenda);
+  useHydratedCaptureStore((params.id as string) || '');
+  const hasDiagnostics = useHasDiagnostics((params.id as string) || '');
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [engagementScope, setEngagementScope] = useState('');
@@ -2368,7 +2410,7 @@ export default function PlanPage() {
   >({});
 
   const workshops = useMemo<Workshop[]>(
-    () => model?.workshops || [],
+    () => (model?.workshops || []).filter(w => w.phase === 'Definition'),
     [model?.workshops]
   );
   const allQuestions = useMemo<WorkshopQuestion[]>(
@@ -2804,20 +2846,78 @@ export default function PlanPage() {
         .plan-inline-select:focus {
           border-bottom-color: var(--accent);
         }
+
+        /* Glass pane card styling */
+        .glass-pane {
+          background: var(--bg-1);
+          border: 1px solid var(--border-1);
+          border-radius: 16px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Agenda timeline styling */
+        .agenda-timeline {
+          position: relative;
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+
+        .agenda-timeline-item {
+          position: relative;
+          display: flex;
+          gap: 16px;
+          padding-bottom: 20px;
+        }
+
+        .agenda-timeline-item:last-child {
+          padding-bottom: 0;
+        }
+
+        .agenda-timeline-item:not(:last-child)::before {
+          content: '';
+          position: absolute;
+          left: 15px;
+          top: 32px;
+          bottom: 0;
+          width: 2px;
+          background: rgba(0, 0, 0, 0.08);
+        }
+
+        .agenda-timeline-marker {
+          flex-shrink: 0;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: var(--accent);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          z-index: 1;
+        }
+
+        .agenda-timeline-number {
+          color: var(--accent-fg);
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .agenda-timeline-content {
+          flex: 1;
+          min-width: 0;
+          padding-top: 4px;
+        }
       `}</style>
 
       <div className="sticky top-0 z-50">
         <AppHeader
-          left="Discovery & Definition · Workshop inventory"
-          right={headerRight}
-          versionLabel={versionLabel}
-          versionTone={versionTone}
-        />
-        <StepProgress
-          currentStep="plan"
           modelId={model.id}
           signalsCount={model.signals?.length || 0}
           hasDiscoveryBundle={!!model.discoveryBundle}
+          hasJourneyPhases={model.journeyPhases.length > 0}
+          hasDiagnostics={hasDiagnostics}
+          currentStep="definition"
         />
       </div>
 
@@ -2892,7 +2992,7 @@ export default function PlanPage() {
             }}
             questionsByWorkshop={questionsByWorkshop}
           />
-          <main className="flex-1 overflow-y-auto">
+          <main className="flex-1 overflow-y-auto" style={{ background: 'var(--bg-0)' }}>
             {selected ? (
               <WorkshopEditor
                 workshop={selected}

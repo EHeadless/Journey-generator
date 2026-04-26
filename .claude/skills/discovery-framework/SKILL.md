@@ -15,20 +15,47 @@ The stable knowledge that governs the pre-generation phase. Discovery produces *
 
 ---
 
-## The Consultancy Workflow (8 steps)
+## The Consultancy Workflow (10 steps)
 
 ```
 1. Client Workspace        → create workspace, upload artifacts
 2. Operating Context       → industry, tech stack, products, personas
 3. Brief                   → business description, goals, pain points
-4. Discovery Plan          → question set, per-department interviews
-5. Discovery Capture       → interview notes, docs, quotes
-6. Signal Extraction       → Problems / Needs / Opportunities / Gaps
-7. Review & Approve        → PM reviews, approves signals
-8. Regenerate Landscape    → phases → demand spaces → dimensions → activations
+                             (optional: upload verbatim brief document
+                             — auto-pre-fills the form via brief-parser)
+4. Research                → optional: upload research artifacts; each
+                             gets a structured summary via research-summarizer
+5. Hypothesis Landscape    → generate journey-phase variants per evidence
+                             blend (form-only / brief-only / research-only /
+                             form+research / everything); strategist picks
+                             which one to activate
+6. Discovery Plan          → workshop inventory + per-workshop question
+                             sets (with provenance back to brief / research)
+7. Discovery Capture       → interview notes, docs, quotes
+8. Signal Extraction       → Problems / Needs / Opportunities / Gaps
+9. Review & Approve        → PM reviews, approves signals
+10. Regenerate Landscape   → phases → demand spaces → circumstances → activations
 ```
 
-This skill governs steps **4 and 5**. The output of step 5 is a `DiscoveryBundle` that contains approved evidence.
+This skill governs steps **4 through 7**. The output of step 7 is a
+`DiscoveryBundle` that contains approved evidence.
+
+### Evidence inputs the question-generation step has access to
+
+When the workshop-question generator runs, it can be passed any subset
+of three evidence layers:
+
+- **Form fields** — the structured brief (industry, personas, pain
+  points, products, tech stack)
+- **Brief document** — the verbatim client brief (`BriefDocument.text`)
+  uploaded on the home page
+- **Research documents** — uploaded research artifacts, each carrying a
+  structured `ResearchDocSummary` (key findings, named segments,
+  pains/frictions, opportunities, direct quotes)
+
+Every workshop question records its **provenance** (`sourceContext` and
+optional `sourceCitations`) so the strategist can see at a glance which
+evidence layer drove it. See Section 4b for the contract.
 
 ---
 
@@ -289,29 +316,52 @@ WorkshopQuestion = {
           'need' | 'opportunity' | 'gap' | 'contradiction',
   journeyPhase?: string,        // optional: which journey phase this probes
   rationale?: string,           // facilitator's why-we-ask
-  notes?: string                // captured answers / field observations
+  notes?: string,               // captured answers / field observations
+  // Provenance — surfaced as a chip on the Discovery page so the
+  // strategist can trace any question back to the evidence that seeded
+  // it. Required on every freshly generated question.
+  sourceContext?: 'form' | 'brief' | 'research' | 'mixed',
+  sourceCitations?: {
+    briefExcerpt?: string,      // ≤200-char verbatim snippet from BriefDocument.text
+    researchDocId?: string,     // the id of the ResearchDocument the evidence came from
+    researchExcerpt?: string    // ≤200-char verbatim snippet from that doc's summary or quotes
+  }
 }
 ```
 
 **Design rules for workshop questions:**
 
-1. **General framing, specific aim.** The question should read as natural
-   conversation ("Walk me through the last time…"), but the `intent` tag
-   tells the facilitator what signal type we want it to surface.
+1. **Open the room first, then sharpen.** Pass A is broad open
+   questions in the client's own frame. Pass B is optional — only stack
+   intent / phase / topic silos when the workshop's profile calls for
+   them. Don't force the 8-intent taxonomy onto every workshop.
 2. **One role per question.** Different attendees see different things;
    don't ask one prompt to the whole room. `targetRole` must match an
    attendee `title` verbatim.
-3. **Balance intents.** Over ~12 questions, aim for: ~1 `context`, ~3
-   `problem`, ~2 `jtbd`, ~2 `circumstance`, ~1 `need`, ~1 `opportunity`,
-   ~1 `gap`, ~1 `contradiction`.
+3. **No fixed intent ratio.** Use intent tags when they sharpen a
+   question; default to `context` for genuinely open ones. The
+   taxonomy exists so signal extraction can classify answers later — it
+   is not a quota the room has to hit.
 4. **Probe contradictions last.** Place contradiction questions at the
    end — they land after trust is built.
 5. **Tag journey phases when defined.** If the engagement has journey
    phases, set `journeyPhase` to the exact label of the phase the
-   question probes. Leave it empty for phase-agnostic questions.
-6. **All edits stay human-owned.** AI proposes; PMs and strategists edit.
-   The Plan UI groups questions by intent so humans can see the balance
-   at a glance.
+   question probes. Leave it empty for phase-agnostic questions. For
+   journey-deep-dive workshops with a supplied phase, **every** question
+   must carry that phase label.
+6. **Volume is a floor, not a ceiling.** The
+   workshop-questions-generator skill gives a per-profile minimum.
+   Never go below it. When the brief or research surface more, write
+   more — distinct, sharp, no padding.
+7. **Provenance is required.** Every freshly generated question carries
+   `sourceContext`. When the source is `brief` or `research` (or
+   `mixed`), `sourceCitations` must include a verbatim ≤200-char
+   excerpt and — for research — the exact `researchDocId` of the doc
+   the evidence came from. Never invent a `researchDocId`.
+8. **All edits stay human-owned.** AI proposes; PMs and strategists
+   edit. The Discovery UI groups questions by intent so humans can see
+   the shape at a glance, and shows the provenance chip so they can
+   spot questions that lean too hard on one source.
 
 The Claude subagent that proposes the inventory is `workshop-planner`.
 The subagent that builds the per-workshop question set is

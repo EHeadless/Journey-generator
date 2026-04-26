@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import {
   Sparkles,
   Plus,
@@ -32,6 +33,15 @@ import { useStore } from '@/lib/store';
 import { DemandSpace, Circumstance, JourneyPhase } from '@/lib/types';
 import { StepProgress } from '@/components/StepProgress';
 import { ToolsRail } from '@/components/ToolsRail';
+import { TweaksPanel } from '@/components/TweaksPanel';
+import { HypothesisVariantsBar } from '@/components/HypothesisVariantsBar';
+import { InformedVariantsBar } from '@/components/InformedVariantsBar';
+import { useCaptureStore, useHasDiagnostics } from '@/lib/captureStore';
+import { useHydratedCaptureStore } from '@/components/capture/CaptureWorkshopCard';
+import { quadrantOf } from '@/lib/problem-diagnostics-meta';
+import type { InformedProblemPayload } from '@/lib/extraction/informed-context';
+import { ProblemProvenanceChip } from '@/components/ProblemProvenanceChip';
+import { CrossCuttingJTBDsBand } from '@/components/CrossCuttingJTBDsBand';
 
 // Phase accent colors
 const PHASE_COLORS = ['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#ef4444', '#14b8a6'];
@@ -67,6 +77,8 @@ interface DisplayDemandSpace {
   jtbd: string;
   circumstances: Circumstance[];
   isLoading?: boolean;
+  /** Provenance back to Problem Diagnostics — present on Informed cards. */
+  sourceProblemIds?: string[];
 }
 
 // Colour tokens per axis — used on Circumstance cards.
@@ -94,6 +106,7 @@ function DemandSpaceCard({
   dimmed,
   highlightedCircumstanceIds,
   isRelated,
+  provenance,
 }: {
   space: DisplayDemandSpace;
   selected: boolean;
@@ -106,6 +119,8 @@ function DemandSpaceCard({
   dimmed?: boolean;
   highlightedCircumstanceIds?: Set<string>;
   isRelated?: boolean;
+  /** Problem-Diagnostics provenance UI — Informed route only. */
+  provenance?: React.ReactNode;
 }) {
   const style = VARIATION_STYLE.v1;
   const circumstances = [...space.circumstances].sort((a, b) => a.order - b.order);
@@ -173,6 +188,8 @@ function DemandSpaceCard({
         </div>
       </div>
       <div className="text-xs text-[var(--fg-2)] mb-3 leading-relaxed">{space.jtbd}</div>
+
+      {provenance}
 
       {isLoadingCircumstances ? (
         <div className="flex items-center gap-2 py-2 text-xs text-[var(--fg-3)]">
@@ -509,6 +526,7 @@ function PhaseColumn({
   personaColor,
   highlightedCircumstanceIds,
   onAddDemandSpace,
+  renderProvenance,
 }: {
   phase: DisplayPhase;
   spaces: DisplayDemandSpace[];
@@ -531,6 +549,8 @@ function PhaseColumn({
       circumstances: [];
     }
   ) => void;
+  /** Optional renderer for the Informed-Landscape provenance chip. */
+  renderProvenance?: (space: DisplayDemandSpace) => React.ReactNode;
 }) {
   const style = VARIATION_STYLE.v1;
   const [isAdding, setIsAdding] = useState(false);
@@ -607,6 +627,7 @@ function PhaseColumn({
               highlightedCircumstanceIds={isRelated ? highlightedCircumstanceIds : undefined}
               dimmed={isDimmed}
               isRelated={isRelated}
+              provenance={renderProvenance ? renderProvenance(space) : undefined}
             />
           );
         })}
@@ -705,16 +726,188 @@ function PersonaFilter({
   );
 }
 
-// Phase Rail
-/**
- * Horizontal scroll-snap journey switcher. Rendered below the StepProgress
- * when a model has more than one journey. Each tab shows the journey name,
- * its JTBD blueprint (if set), and a small phase-count chip. Tabs flick-
- * scroll left/right on touchpads and phones; we skip rendering entirely
- * when there's only one journey — that case shows the JTBD as a subtitle
- * on the active journey header instead.
- */
-function JourneyTabs({
+// =============================================================================
+// PANE 1: Top Header (Logo + 7-Step Progress + API Key + Tweaks)
+// =============================================================================
+function Pane1_TopHeader({
+  industry,
+  apiKey,
+  onApiKeyChange,
+  onOpenTweaks,
+  signalsCount,
+  hasDiscoveryBundle,
+  modelId,
+  hasJourneyPhases,
+  hasDiagnostics,
+  activeStep,
+}: {
+  industry: string;
+  apiKey: string;
+  onApiKeyChange: (key: string) => void;
+  onOpenTweaks: () => void;
+  signalsCount: number;
+  hasDiscoveryBundle: boolean;
+  modelId: string;
+  hasJourneyPhases: boolean;
+  /**
+   * True when at least one classified problem exists for this model.
+   * Gates the Informed Landscape step. Sourced from
+   * `useHasDiagnostics(modelId)` in the parent.
+   */
+  hasDiagnostics: boolean;
+  /**
+   * Which step in the strip should be highlighted as active. The
+   * workspace page renders both `/model/[id]` (Hypothesis) and
+   * `/model/[id]/informed-landscape` (Informed) — the parent passes
+   * the right value based on the current pathname so the highlight
+   * follows the route.
+   */
+  activeStep: 'hypothesis-landscape' | 'informed-landscape';
+}) {
+  const STEPS = [
+    { label: 'Brief', step: 'brief', route: '/' },
+    { label: 'Research', step: 'research', route: `/model/${modelId}/research` },
+    { label: 'Hypothesis Landscape', step: 'hypothesis-landscape', route: `/model/${modelId}` },
+    { label: 'Discovery', step: 'discovery', route: `/model/${modelId}/discovery` },
+    { label: 'Capture', step: 'capture', route: `/model/${modelId}/capture` },
+    { label: 'Problem Diagnostics', step: 'diagnostics', route: `/model/${modelId}/diagnostics` },
+    { label: 'Informed Landscape', step: 'informed-landscape', route: `/model/${modelId}/informed-landscape` },
+    { label: 'Definition', step: 'definition', route: `/model/${modelId}/definition` },
+    { label: 'Signals', step: 'signals', route: `/model/${modelId}/signals` },
+    { label: 'Review', step: 'review', route: `/model/${modelId}/review` },
+    { label: 'Evidenced Landscape', step: 'evidenced-landscape', route: `/model/${modelId}` },
+  ];
+
+  const currentStep = hasDiscoveryBundle ? 'evidenced-landscape' : activeStep;
+  const currentIndex = STEPS.findIndex(s => s.step === currentStep);
+
+  // Determine if a step is enabled
+  const isStepEnabled = (step: string) => {
+    if (step === 'brief') return true;
+    if (step === 'research') return true;
+    if (step === 'hypothesis-landscape') return true;
+    if (step === 'discovery') return hasJourneyPhases;
+    if (step === 'capture') return hasJourneyPhases;
+    if (step === 'diagnostics') return hasJourneyPhases;
+    if (step === 'informed-landscape') return hasJourneyPhases && hasDiagnostics;
+    if (step === 'definition') return hasJourneyPhases;
+    if (step === 'plan') return hasJourneyPhases; // backwards compatibility
+    if (step === 'signals') return hasJourneyPhases;
+    if (step === 'review') return signalsCount > 0;
+    if (step === 'evidenced-landscape') return hasDiscoveryBundle;
+    return false;
+  };
+
+  return (
+    <div
+      className="h-[48px] flex items-center px-5 gap-6 border-b"
+      style={{
+        background: 'var(--bg-1)',
+        borderColor: 'var(--border-1)',
+      }}
+    >
+      {/* Logo */}
+      <div className="flex items-center gap-2">
+        <div className="w-6 h-6 rounded bg-[var(--accent)] text-[var(--accent-fg)] grid place-items-center text-[13px] font-bold shadow-lg shadow-[var(--accent)]/20">
+          J
+        </div>
+        <span className="text-sm font-bold tracking-tight">Journey Generator</span>
+      </div>
+
+      <div className="h-4 w-px bg-[var(--border-1)]" />
+
+      {/* 7-Step Progress */}
+      <nav className="flex items-center gap-4 overflow-x-auto scrollbar-hide">
+        {STEPS.map((s, i) => {
+          const isActive = i === currentIndex;
+          const isPast = i < currentIndex;
+          const enabled = isStepEnabled(s.step);
+
+          const stepContent = (
+            <>
+              <div
+                className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                style={{
+                  background: isActive ? 'var(--accent)' : isPast ? 'var(--bg-4)' : 'var(--bg-3)',
+                  color: isActive ? 'var(--accent-fg)' : isPast ? 'var(--fg-1)' : 'var(--fg-3)',
+                }}
+              >
+                {i + 1}
+              </div>
+              <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: isActive ? 'var(--fg-1)' : 'var(--fg-2)' }}>
+                {s.label}
+              </span>
+            </>
+          );
+
+          return (
+            <div key={i} className="flex items-center gap-2">
+              {enabled ? (
+                <Link
+                  href={s.route}
+                  className={`flex items-center gap-2 transition-opacity hover:opacity-100 ${isActive ? 'opacity-100' : isPast ? 'opacity-60' : 'opacity-30'}`}
+                >
+                  {stepContent}
+                </Link>
+              ) : (
+                <div
+                  className={`flex items-center gap-2 cursor-not-allowed ${isActive ? 'opacity-100' : 'opacity-30'}`}
+                  title={
+                    s.step === 'plan' ||
+                    s.step === 'discovery' ||
+                    s.step === 'definition' ||
+                    s.step === 'capture' ||
+                    s.step === 'diagnostics' ||
+                    s.step === 'signals'
+                      ? 'Generate a journey first'
+                      : s.step === 'informed-landscape'
+                      ? hasJourneyPhases
+                        ? 'Classify at least one problem on the Diagnostics step first'
+                        : 'Generate a journey first'
+                      : s.step === 'review'
+                      ? 'Extract signals first'
+                      : s.step === 'evidenced-landscape'
+                      ? 'Approve discovery bundle first'
+                      : ''
+                  }
+                >
+                  {stepContent}
+                </div>
+              )}
+              {i < STEPS.length - 1 && <div className="w-4 h-px bg-[var(--border-1)]" />}
+            </div>
+          );
+        })}
+      </nav>
+
+      {/* Right: API Key + Tweaks */}
+      <div className="ml-auto flex items-center gap-4">
+        <div className="flex items-center gap-2 px-2.5 py-1 bg-[var(--bg-2)] rounded-lg border border-[var(--border-1)]">
+          <span className="text-[9px] font-bold text-[var(--fg-3)] uppercase tracking-widest">OpenAI Key</span>
+          <input
+            type="password"
+            value={apiKey}
+            onChange={(e) => onApiKeyChange(e.target.value)}
+            placeholder="sk-..."
+            className="bg-transparent text-[11px] w-16 outline-none"
+            style={{ color: 'var(--fg-1)' }}
+          />
+        </div>
+        <button
+          className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--fg-2)] hover:text-[var(--accent)] transition-colors"
+          onClick={onOpenTweaks}
+        >
+          <SlidersHorizontal size={12} /> TWEAKS
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// PANE 2: Journey Folder Tabs (Departure, Arrival, Transit + Add)
+// =============================================================================
+function Pane2_JourneyFolderTabs({
   journeys,
   activeJourneyId,
   setActiveJourneyId,
@@ -733,216 +926,240 @@ function JourneyTabs({
   onGenerateJourney: (journeyId: string) => void;
   canGenerate: boolean;
 }) {
-  if (journeys.length <= 1) return null;
   return (
     <div
-      className="scrollbar-hide flex items-stretch gap-2 px-4 py-2 overflow-x-auto"
+      className="flex items-end px-4 gap-1 pt-2"
       style={{
-        background: 'var(--bg-1)',
-        borderBottom: '1px solid var(--border-1)',
-        scrollSnapType: 'x mandatory',
-        WebkitOverflowScrolling: 'touch',
+        background: 'var(--bg-0)',
       }}
     >
       {journeys.map((j) => {
         const active = j.id === activeJourneyId;
-        const count = phaseCountByJourney[j.id] ?? 0;
+        const phaseCount = phaseCountByJourney[j.id] || 0;
         const isGenerating = generatingJourneyId === j.id;
         const needsGen = needsGenerationByJourney[j.id];
+
         return (
-          <div
-            key={j.id}
-            className="flex-shrink-0 rounded-xl transition-all relative"
-            style={{
-              scrollSnapAlign: 'start',
-              background: active ? 'var(--bg-2)' : 'transparent',
-              border: active ? '1px solid var(--border-1)' : '1px solid transparent',
-              boxShadow: active ? 'var(--shadow-sm)' : 'none',
-              minWidth: 180,
-              maxWidth: 280,
-            }}
-          >
+          <div key={j.id} className="relative">
             <button
-              type="button"
               onClick={() => setActiveJourneyId(j.id)}
-              className="w-full text-left px-4 py-2.5"
+              className="group flex flex-col px-6 py-3 gap-0.5 transition-all relative"
+              style={{
+                background: active ? 'var(--bg-1)' : 'transparent',
+                border: active ? '1px solid var(--border-1)' : '1px solid transparent',
+                borderBottom: active ? '1px solid var(--bg-1)' : '1px solid transparent',
+                borderTopLeftRadius: 12,
+                borderTopRightRadius: 12,
+                marginBottom: active ? -1 : 0,
+                zIndex: active ? 50 : 1,
+                color: active ? 'var(--fg-1)' : 'var(--fg-3)',
+              }}
             >
-              <div className="flex items-center gap-2 mb-0.5">
+              <div className="flex items-center gap-2">
                 <span
-                  className="text-[11px] font-black uppercase tracking-widest truncate"
-                  style={{ color: active ? 'var(--fg-1)' : 'var(--fg-2)' }}
+                  className="text-[11px] font-black uppercase tracking-widest"
+                  style={{ color: active ? 'var(--accent)' : 'var(--fg-3)' }}
                 >
-                  {j.name || 'Untitled journey'}
+                  {j.name || 'Journey'}
                 </span>
-                {isGenerating ? (
-                  <Loader2 size={11} className="animate-spin" style={{ color: 'var(--accent)' }} />
-                ) : (
-                  <span
-                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                    style={{
-                      background: active ? 'var(--accent-soft)' : 'var(--bg-3)',
-                      color: active ? 'var(--accent)' : 'var(--fg-3)',
-                    }}
-                  >
-                    {count}
-                  </span>
-                )}
+                <span
+                  className="text-[9px] font-bold px-1.5 rounded-full flex items-center gap-1"
+                  style={{
+                    background: active ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'var(--bg-3)',
+                    color: active ? 'var(--accent)' : 'var(--fg-3)',
+                  }}
+                >
+                  {phaseCount}
+                  {isGenerating && <Loader2 size={9} className="animate-spin" />}
+                </span>
               </div>
-              {j.jtbdBlueprint ? (
+              {j.jtbdBlueprint && (
                 <div
-                  className="text-[10px] leading-snug truncate pr-14"
-                  style={{ color: active ? 'var(--fg-2)' : 'var(--fg-3)' }}
-                  title={j.jtbdBlueprint}
+                  className="text-[9px] font-medium truncate w-32 italic"
+                  style={{ color: active ? 'var(--fg-3)' : 'var(--fg-3)', opacity: active ? 0.6 : 0.5 }}
                 >
                   {j.jtbdBlueprint}
-                </div>
-              ) : (
-                <div className="text-[10px] italic pr-14" style={{ color: 'var(--fg-3)' }}>
-                  No JTBD blueprint yet
                 </div>
               )}
             </button>
 
-            {/* Per-journey Generate chip — shown only when this journey
-                hasn't produced any demand spaces yet. Sits over the tab so
-                preloaded-but-unpopulated journeys (Dubai Airport: Arrival,
-                Transit, Departure) still have an obvious entry point. */}
+            {/* Generate chip overlay */}
             {needsGen && !isGenerating && (
               <button
-                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!canGenerate) return;
                   onGenerateJourney(j.id);
                 }}
                 disabled={!canGenerate}
-                title={
-                  canGenerate
-                    ? 'Generate phases + demand spaces for this journey'
-                    : 'Add your OpenAI key to generate'
-                }
-                className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all"
+                className="absolute top-1 right-1 px-2 py-0.5 rounded-lg text-[9px] font-bold"
                 style={{
-                  background: canGenerate ? 'var(--accent)' : 'var(--bg-3)',
-                  color: canGenerate ? 'var(--accent-fg)' : 'var(--fg-3)',
-                  cursor: canGenerate ? 'pointer' : 'not-allowed',
-                  opacity: canGenerate ? 1 : 0.6,
+                  background: 'var(--accent)',
+                  color: 'var(--accent-fg)',
                 }}
               >
-                <Zap size={10} /> Gen
+                <Zap size={10} className="inline mr-1" />
+                Gen
               </button>
             )}
           </div>
         );
       })}
+
+      {/* Add journey button */}
+      <button
+        className="mb-2 ml-2 w-8 h-8 rounded-lg flex items-center justify-center text-[var(--fg-3)] hover:text-[var(--accent)] border border-dashed"
+        style={{ borderColor: 'var(--border-1)' }}
+      >
+        <Plus size={14} />
+      </button>
     </div>
   );
 }
 
-function PhaseRail({
-  phases,
-  activePhase,
-  setActivePhase,
-  onZoomToPhase,
+// =============================================================================
+// PANE 3 & 4: Unified Workspace Container (Inspiration Board + Phase Nav)
+// =============================================================================
+function Pane3and4_WorkspaceContainer({
+  activeJourneyName,
+  totals,
+  isGenerating,
+  onStopGeneration,
+  onToggleFullscreen,
+  fullscreen,
+  onExpandAll,
+  onCollapseAll,
   onRefine,
   refineEnabled,
   refineTitle,
   refineIsRunning,
-  onExpandAll,
-  onCollapseAll,
-  isGenerating,
-  onStopGeneration,
-  totals,
+  onGenerateJourney,
+  canGenerate,
+  phases,
+  activePhase,
+  setActivePhase,
+  onZoomToPhase,
 }: {
-  phases: DisplayPhase[];
-  activePhase: string;
-  setActivePhase: (id: string) => void;
-  onZoomToPhase: (id: string) => void;
+  activeJourneyName: string;
+  totals: { phases: number; spaces: number; circumstances: number };
+  isGenerating: boolean;
+  onStopGeneration: () => void;
+  onToggleFullscreen: () => void;
+  fullscreen: boolean;
+  onExpandAll: () => void;
+  onCollapseAll: () => void;
   onRefine: () => void;
   refineEnabled: boolean;
   refineTitle: string;
   refineIsRunning: boolean;
-  onExpandAll: () => void;
-  onCollapseAll: () => void;
-  isGenerating: boolean;
-  onStopGeneration: () => void;
-  totals: { phases: number; spaces: number; circumstances: number };
+  onGenerateJourney: () => void;
+  canGenerate: boolean;
+  phases: DisplayPhase[];
+  activePhase: string;
+  setActivePhase: (id: string) => void;
+  onZoomToPhase: (id: string) => void;
 }) {
   return (
     <div
-      className="absolute top-0 left-0 right-0 z-20 py-2.5 px-4 border-b border-[var(--border-1)]"
+      className="mx-4 mb-4"
       style={{
-        background: 'color-mix(in srgb, var(--bg-0) 92%, transparent)',
-        backdropFilter: 'saturate(180%) blur(10px)',
+        background: 'var(--bg-1)',
+        border: '1px solid var(--border-1)',
+        borderTopRightRadius: 16,
+        borderBottomLeftRadius: 16,
+        borderBottomRightRadius: 16,
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
       }}
     >
-      <div className="flex items-center gap-4">
-        {/* Title */}
-        <div className="flex-shrink-0 min-w-[200px]">
-          <div className="eyebrow eyebrow--accent">Workspace</div>
-          <div className="text-lg font-bold tracking-tight mt-0.5">JTBD Blueprint</div>
+      {/* Pane 3: Inspiration Board Header */}
+      <div className="h-20 flex items-center px-8 gap-12 border-b" style={{ borderColor: 'var(--border-1)' }}>
+        {/* Identity Bar + Title */}
+        <div className="flex items-center gap-4">
+          <div
+            className="w-1.5 h-10 rounded-full"
+            style={{ background: 'var(--accent)' }}
+          />
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--accent)' }}>
+              Inspiration Board
+            </span>
+            <h2 className="text-xl font-extrabold tracking-tight uppercase italic" style={{ color: 'var(--fg-1)' }}>
+              {activeJourneyName} Journey
+            </h2>
+          </div>
         </div>
 
-        {/* Summary counts */}
-        <div className="flex items-center gap-6 ml-5">
-          {[
-            { label: 'Phases', value: totals.phases, color: 'var(--fg-1)' },
-            { label: 'Spaces', value: totals.spaces, color: '#4ade80' },
-            { label: 'Circumstances', value: totals.circumstances, color: '#06b6d4' },
-          ].map((x) => (
-            <div key={x.label}>
-              <div className="text-xl font-semibold font-mono" style={{ color: x.color }}>
-                {x.value}
-              </div>
-              <div className="text-[10px] font-medium text-[var(--fg-3)] uppercase tracking-wider mt-1">
-                {x.label}
-              </div>
-            </div>
-          ))}
+        <div className="h-8 w-px" style={{ background: 'var(--border-1)' }} />
+
+        {/* Stats with inline loader */}
+        <div className="flex items-center gap-10">
           {isGenerating && (
-            <div className="flex items-center gap-3 text-[var(--accent)]">
-              <Loader2 size={16} className="animate-spin" />
-              <span className="text-sm font-medium">Generating...</span>
+            <div className="flex items-center gap-2" style={{ color: 'var(--accent)' }}>
+              <Loader2 size={14} className="animate-spin" />
+              <span className="text-xs font-medium">Generating...</span>
               <button
                 onClick={onStopGeneration}
-                className="px-3 py-1 rounded-lg text-xs font-bold transition-colors"
+                className="px-2 py-1 rounded-lg text-[10px] font-bold transition-colors"
                 style={{
                   background: 'var(--danger)',
                   color: 'white',
                 }}
-                title="Stop all generation and keep what's been generated so far"
               >
                 Stop
               </button>
             </div>
           )}
+          {!isGenerating && [
+            { label: 'Phases', value: totals.phases, color: 'var(--fg-1)' },
+            { label: 'Spaces', value: totals.spaces, color: '#4ade80' },
+            { label: 'Circumstances', value: totals.circumstances, color: '#06b6d4' },
+          ].map((x) => (
+            <div key={x.label} className="flex flex-col">
+              <span className="text-2xl font-bold font-mono leading-none" style={{ color: x.color }}>
+                {x.value}
+              </span>
+              <span className="text-[9px] font-black uppercase tracking-widest mt-1" style={{ color: 'var(--fg-3)' }}>
+                {x.label}
+              </span>
+            </div>
+          ))}
         </div>
 
         {/* Actions */}
-        <div className="ml-auto flex gap-2">
-          <button className="btn btn--ghost btn--sm" onClick={onExpandAll} title="Expand all">
-            <ChevronsUpDown size={13} /> Expand
-          </button>
-          <button className="btn btn--ghost btn--sm" onClick={onCollapseAll} title="Collapse all">
-            <ChevronsDownUp size={13} /> Collapse
-          </button>
-          <button className="btn btn--ghost btn--sm">
-            <Plus size={13} /> Add phase
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            className="flex items-center gap-2 px-4 py-2 text-[11px] font-bold rounded-xl border transition-colors hover:bg-[var(--bg-2)]"
+            style={{ borderColor: 'var(--border-1)', background: 'var(--bg-1)', color: 'var(--fg-2)' }}
+            onClick={onToggleFullscreen}
+          >
+            <Maximize size={12} /> FULL SCREEN
           </button>
           <button
-            className={`btn btn--sm ${refineEnabled ? 'btn--primary' : 'btn--ghost'}`}
-            onClick={onRefine}
-            disabled={!refineEnabled || refineIsRunning}
-            title={refineTitle}
+            className="flex items-center gap-2 px-4 py-2 text-[11px] font-bold rounded-xl shadow-lg transition-transform hover:scale-[1.02]"
+            style={{
+              background: canGenerate ? 'var(--accent)' : 'var(--bg-3)',
+              color: canGenerate ? 'var(--accent-fg)' : 'var(--fg-3)',
+              boxShadow: canGenerate ? '0 4px 14px rgba(99, 102, 241, 0.2)' : 'none',
+            }}
+            onClick={onGenerateJourney}
+            disabled={!canGenerate}
+            title={canGenerate ? 'Generate phases + demand spaces for this journey' : 'Add your OpenAI key to generate'}
           >
-            <Wand2 size={13} />
-            {refineIsRunning ? 'Regenerating…' : 'Refine with discovery'}
+            <Zap size={12} className={canGenerate ? 'fill-white' : ''} />
+            {isGenerating ? 'GENERATING…' : 'GENERATE JOURNEY'}
           </button>
         </div>
       </div>
 
-      {/* Phase tabs */}
-      <div className="scrollbar-hide flex gap-1.5 mt-3 overflow-x-auto">
+      {/* Pane 4: Phase Navigation Strip */}
+      <div
+        className="px-8 py-3 flex items-center gap-2 overflow-x-auto scrollbar-hide"
+        style={{
+          background: 'color-mix(in srgb, var(--bg-2) 50%, transparent)',
+          borderBottomLeftRadius: 16,
+          borderBottomRightRadius: 16,
+        }}
+      >
         {phases.map((p) => {
           const active = activePhase === p.id;
           return (
@@ -952,21 +1169,27 @@ function PhaseRail({
                 setActivePhase(p.id);
                 onZoomToPhase(p.id);
               }}
-              className="flex items-center gap-2 py-1.5 px-3 rounded-lg whitespace-nowrap transition-all cursor-pointer text-[12px] font-medium"
+              className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all"
               style={{
-                background: active ? 'var(--bg-2)' : 'transparent',
-                border: active ? '1px solid var(--border-2)' : '1px solid var(--border-1)',
-                color: 'var(--fg-1)',
+                background: active ? 'var(--bg-1)' : 'transparent',
+                borderColor: active ? 'var(--border-2)' : 'var(--border-1)',
               }}
             >
-              <span
-                className="w-[18px] h-[18px] rounded-[5px] grid place-items-center text-[10px] font-bold text-white"
+              <div
+                className="w-[18px] h-[18px] rounded-[4px] flex items-center justify-center text-[10px] font-extrabold text-white"
                 style={{ background: p.accent }}
               >
                 {p.order}
+              </div>
+              <span
+                className="text-[11px] font-bold whitespace-nowrap"
+                style={{ color: active ? 'var(--fg-1)' : 'var(--fg-2)' }}
+              >
+                {p.label}
               </span>
-              {p.label}
-              <span className="text-[10px] font-mono text-[var(--fg-3)]">{p.counts.spaces}</span>
+              <span className="text-[10px] font-mono" style={{ color: 'var(--fg-3)' }}>
+                {p.counts.spaces}
+              </span>
             </button>
           );
         })}
@@ -974,6 +1197,7 @@ function PhaseRail({
     </div>
   );
 }
+
 
 // Zoom Controls
 function ZoomControls({
@@ -1246,176 +1470,9 @@ function AIPanel({
   );
 }
 
-// Tweaks Panel
-function TweaksPanel({
-  open,
-  onClose,
-  theme,
-  setTheme,
-}: {
-  open: boolean;
-  onClose: () => void;
-  theme: ThemeConfig;
-  setTheme: (t: ThemeConfig) => void;
-}) {
-  if (!open) return null;
-
-  const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="grid grid-cols-[96px_1fr] gap-3 items-center py-2.5">
-      <div className="text-[11px] font-medium uppercase tracking-widest text-[var(--fg-3)]">{label}</div>
-      <div>{children}</div>
-    </div>
-  );
-
-  const Seg = ({
-    options,
-    value,
-    onChange,
-  }: {
-    options: { value: string; label: string }[];
-    value: string;
-    onChange: (v: string) => void;
-  }) => (
-    <div className="inline-flex gap-0.5 p-0.5 bg-[var(--bg-3)] border border-[var(--border-1)] rounded-[10px]">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          className="py-1.5 px-2.5 rounded-[7px] border-none cursor-pointer text-xs font-medium transition-all"
-          style={{
-            background: value === o.value ? 'var(--bg-1)' : 'transparent',
-            color: value === o.value ? 'var(--fg-1)' : 'var(--fg-2)',
-            boxShadow: value === o.value ? '0 1px 2px rgba(0,0,0,.08)' : 'none',
-          }}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-
-  return (
-    <>
-      <div onClick={onClose} className="fixed inset-0 z-[80] bg-black/20" />
-      <aside
-        className="fixed right-4 top-16 bottom-4 z-[90] w-80 bg-[var(--bg-1)] border border-[var(--border-1)] rounded-[14px] p-4 overflow-auto"
-        style={{ boxShadow: 'var(--shadow-lg)' }}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-sm font-semibold">Tweaks</div>
-          <button className="btn btn--icon btn--ghost btn--sm" onClick={onClose}>
-            <X size={14} />
-          </button>
-        </div>
-        <Row label="Mode">
-          <Seg
-            options={[
-              { value: 'linear', label: 'Linear' },
-              { value: 'editorial', label: 'Editorial' },
-              { value: 'ei', label: 'EI' },
-            ]}
-            value={theme.theme}
-            onChange={(v) => setTheme({ ...theme, theme: v as ThemeConfig['theme'] })}
-          />
-        </Row>
-        <Row label="Canvas">
-          <Seg
-            options={[
-              { value: 'dots', label: 'Dots' },
-              { value: 'grid', label: 'Grid' },
-              { value: 'plain', label: 'Plain' },
-            ]}
-            value={theme.bg}
-            onChange={(v) => setTheme({ ...theme, bg: v as ThemeConfig['bg'] })}
-          />
-        </Row>
-      </aside>
-    </>
-  );
-}
-
-// Top bar
-function TopBar({
-  left,
-  right,
-  onOpenTweaks,
-  apiKey,
-  onApiKeyChange,
-  versionLabel,
-  versionTone,
-}: {
-  left: string;
-  right?: React.ReactNode;
-  onOpenTweaks: () => void;
-  apiKey: string;
-  onApiKeyChange: (key: string) => void;
-  versionLabel?: string;
-  versionTone?: 'hypothesis' | 'evidenced';
-}) {
-  const { open: railOpen, toggle: toggleRail } = useToolsRail();
-  return (
-    <header className="sticky top-0 z-40 glass-header border-b border-[var(--border-1)] py-2.5 px-5 flex items-center gap-4">
-      <a href="/" className="flex items-center gap-2 no-underline text-[var(--fg-1)]">
-        <div className="w-6 h-6 rounded-[6px] bg-[var(--accent)] text-[var(--accent-fg)] grid place-items-center text-[13px] font-bold">
-          J
-        </div>
-        <span className="text-sm font-semibold tracking-tight">Journey Generator</span>
-      </a>
-      <span className="opacity-30">/</span>
-      <span className="text-[13px] text-[var(--fg-2)]">{left}</span>
-      {versionLabel && (
-        <span
-          className="chip"
-          style={
-            versionTone === 'evidenced'
-              ? {
-                  background:
-                    'color-mix(in srgb, var(--success) 14%, transparent)',
-                  color:
-                    'color-mix(in srgb, var(--success) 80%, var(--fg-1))',
-                  border:
-                    '1px solid color-mix(in srgb, var(--success) 40%, transparent)',
-                }
-              : undefined
-          }
-        >
-          {versionLabel}
-        </span>
-      )}
-
-      <div className="ml-auto flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-[var(--fg-3)] uppercase tracking-wider">OpenAI Key</span>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => onApiKeyChange(e.target.value)}
-            placeholder="sk-..."
-            className="w-36 px-2 py-1.5 text-sm bg-[var(--bg-2)] border border-[var(--border-1)] rounded-lg text-[var(--fg-1)] placeholder-[var(--fg-3)] outline-none focus:border-[var(--accent)]"
-          />
-        </div>
-        {right}
-        <button
-          type="button"
-          className="btn btn--ghost btn--sm"
-          onClick={toggleRail}
-          title={railOpen ? 'Hide versions & tools' : 'Show versions & tools'}
-          aria-label={railOpen ? 'Hide versions & tools' : 'Show versions & tools'}
-          aria-pressed={railOpen}
-        >
-          {railOpen ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
-          Versions
-        </button>
-        <button className="btn btn--ghost btn--sm" onClick={onOpenTweaks}>
-          <SlidersHorizontal size={14} />
-          Tweaks
-        </button>
-      </div>
-    </header>
-  );
-}
-
-// Main Workspace page
+// =============================================================================
+// Main Workspace Page
+// =============================================================================
 export default function WorkspacePage() {
   const params = useParams();
   const router = useRouter();
@@ -1427,21 +1484,121 @@ export default function WorkspacePage() {
     model,
     isGeneratingPhases,
     isGeneratingDemandSpaces,
+    isGeneratingCrossCuttingDemandSpaces,
     isGeneratingCircumstances,
     isGeneratingPersonaMappings,
     setJourneyPhases,
     setDemandSpaces,
+    setCrossCuttingDemandSpaces,
     setCircumstances,
     setPersonaMappings,
     setGeneratingPhases,
     setGeneratingDemandSpaces,
+    setGeneratingCrossCuttingDemandSpaces,
     setGeneratingCircumstances,
     setGeneratingPersonaMappings,
     resetLandscapeForRegen,
     setCurrentStep,
     createDemandSpaceWithCircumstances,
     stopAllGeneration,
+    addHypothesisVariant,
+    removeHypothesisVariant,
+    setActiveHypothesisVariant,
+    addInformedVariant,
+    removeInformedVariant,
+    setActiveInformedVariant,
   } = useStore();
+
+  // Pathname-driven landscape mode. When the route ends in
+  // `/informed-landscape`, swap the variant strip to InformedVariantsBar so
+  // the strategist works against classified problems instead of brief/research.
+  const pathname = usePathname();
+  const isInformedRoute = pathname?.endsWith('/informed-landscape') ?? false;
+
+  // Problem diagnostics live in the capture (IndexedDB) store, not on Model.
+  // Hydrate the capture store for this model so the InformedVariantsBar
+  // (and downstream Informed-landscape gates) see the user's classified
+  // problems when they navigate here directly from a fresh page load.
+  useHydratedCaptureStore((params.id as string) || '');
+  const problemDiagnostics = useCaptureStore((s) => s.problemDiagnostics);
+  const hasDiagnostics = useHasDiagnostics(model?.id);
+
+  /**
+   * Denormalize ProblemDiagnostic rows into the
+   * `InformedProblemPayload` shape the API route + prompt expect.
+   *
+   * The diagnostic only stores `problemSignalId`; the human-readable
+   * problem text lives on the curated `Signal` row referenced by that
+   * id (see `Signal.text`). We join here once per render so the bar
+   * can pass a flat payload downstream.
+   */
+  const informedProblemsPayload = useMemo<InformedProblemPayload[]>(() => {
+    if (!model) return [];
+    const signalById = new Map((model.signals || []).map((s) => [s.id, s]));
+    const out: InformedProblemPayload[] = [];
+    for (const d of problemDiagnostics) {
+      const signal = signalById.get(d.problemSignalId);
+      if (!signal) continue;
+      out.push({
+        id: d.id,
+        text: signal.text,
+        discipline: d.discipline,
+        secondaryDiscipline: d.secondaryDiscipline,
+        impact: d.impact,
+        frequency: d.frequency,
+        affectedPhaseIds: d.affectedPhaseIds,
+        department: signal.department,
+        sourceQuotes: undefined,
+        quadrant: quadrantOf({ frequency: d.frequency, impact: d.impact }),
+      });
+    }
+    return out;
+  }, [model, problemDiagnostics]);
+
+  // Per-phase slice — used by `handleGenerateDemandSpaces` on the
+  // Informed route so each phase's demand-space generation is grounded
+  // in the diagnostics that actually touch it. Problems that are tagged
+  // ONLY to phases that no longer exist in the current model (stale
+  // ids) are filtered out here and recovered by the cross-cutting
+  // bucket below — every problem is guaranteed to land somewhere.
+  const currentPhaseIdSet = useMemo(
+    () => new Set((model?.journeyPhases || []).map((p) => p.id)),
+    [model?.journeyPhases]
+  );
+
+  const informedProblemsByPhase = useMemo(() => {
+    const map = new Map<string, InformedProblemPayload[]>();
+    for (const p of informedProblemsPayload) {
+      for (const phaseId of p.affectedPhaseIds) {
+        if (!currentPhaseIdSet.has(phaseId)) continue;
+        const arr = map.get(phaseId) || [];
+        arr.push(p);
+        map.set(phaseId, arr);
+      }
+    }
+    return map;
+  }, [informedProblemsPayload, currentPhaseIdSet]);
+
+  // Cross-cutting slice — problems with no specific phase OR problems
+  // whose tagged phases no longer exist (orphans). These feed the
+  // Cross-cutting JTBDs band and the systemic generation route. The
+  // contract: every classified problem ends up in either a per-phase
+  // bucket above or in this bucket — nothing is silently dropped.
+  const informedProblemsCrossCutting = useMemo(
+    () =>
+      informedProblemsPayload.filter((p) => {
+        if (p.affectedPhaseIds.length === 0) return true;
+        return p.affectedPhaseIds.every((id) => !currentPhaseIdSet.has(id));
+      }),
+    [informedProblemsPayload, currentPhaseIdSet]
+  );
+
+  // Lookup map keyed by problem id for fast provenance resolution.
+  const problemsById = useMemo(() => {
+    const m = new Map<string, InformedProblemPayload>();
+    for (const p of informedProblemsPayload) m.set(p.id, p);
+    return m;
+  }, [informedProblemsPayload]);
 
   const [tweaksOpen, setTweaksOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -1451,6 +1608,17 @@ export default function WorkspacePage() {
   const [error, setError] = useState<string | null>(null);
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
   const [activePersona, setActivePersona] = useState<string | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  // AbortControllers for canceling in-flight generation requests
+  const abortControllersRef = useRef<{
+    phases?: AbortController;
+    demandSpaces: Record<string, AbortController>;
+    circumstances: Record<string, AbortController>;
+  }>({
+    demandSpaces: {},
+    circumstances: {},
+  });
 
   // Expand/collapse handlers
   const toggleExpand = useCallback((id: string) => {
@@ -1467,6 +1635,27 @@ export default function WorkspacePage() {
   const collapseAll = useCallback(() => {
     setExpandedCards({});
   }, []);
+
+  // Custom stop function that aborts all in-flight requests and keeps generated data
+  const handleStopAllGeneration = useCallback(() => {
+    // Abort all in-flight requests
+    if (abortControllersRef.current.phases) {
+      abortControllersRef.current.phases.abort();
+      abortControllersRef.current.phases = undefined;
+    }
+    Object.values(abortControllersRef.current.demandSpaces).forEach(controller => {
+      controller.abort();
+    });
+    abortControllersRef.current.demandSpaces = {};
+
+    Object.values(abortControllersRef.current.circumstances).forEach(controller => {
+      controller.abort();
+    });
+    abortControllersRef.current.circumstances = {};
+
+    // Reset loading states in store
+    stopAllGeneration();
+  }, [stopAllGeneration]);
 
   // API key
   const [apiKey, setApiKey] = useState('');
@@ -1599,6 +1788,7 @@ export default function WorkspacePage() {
             label: ds.label,
             jtbd: ds.jobToBeDone,
             circumstances,
+            sourceProblemIds: ds.sourceProblemIds,
           };
         });
       result[phase.id] = spaces;
@@ -1683,6 +1873,24 @@ export default function WorkspacePage() {
     Object.values(isGeneratingCircumstances).some(Boolean) ||
     isGeneratingPersonaMappings;
 
+  // Is the ACTIVE journey generating? (for showing loader only on active journey)
+  const isActiveJourneyGenerating = useMemo(() => {
+    if (isGeneratingPhases) return true;
+
+    // Check if any phases in the active journey are generating demand spaces
+    const activePhaseIds = activeJourneyPhases.map(p => p.id);
+    const hasGeneratingPhases = activePhaseIds.some(phaseId => isGeneratingDemandSpaces[phaseId]);
+    if (hasGeneratingPhases) return true;
+
+    // Check if any demand spaces in the active journey are generating circumstances
+    const activeSpaceIds = model?.demandSpaces
+      .filter(ds => activePhaseIds.includes(ds.journeyPhaseId))
+      .map(ds => ds.id) || [];
+    const hasGeneratingSpaces = activeSpaceIds.some(spaceId => isGeneratingCircumstances[spaceId]);
+
+    return hasGeneratingSpaces;
+  }, [isGeneratingPhases, activeJourneyPhases, isGeneratingDemandSpaces, isGeneratingCircumstances, model]);
+
   // Check if ALL generation is complete (for enabling persona filter)
   const isGenerationComplete = Boolean(
     !isAnyGenerating &&
@@ -1693,13 +1901,24 @@ export default function WorkspacePage() {
   );
 
   // Generation handlers (defined first so they can be referenced)
-  const handleGenerateDemandSpaces = useCallback(async (phaseId: string) => {
+  const handleGenerateDemandSpaces = useCallback(async (phaseId: string, opts?: { prioritiseProblemIds?: string[] }) => {
     if (!model || !apiKey) return;
     const phase = model.journeyPhases.find(p => p.id === phaseId);
     if (!phase) return;
 
     setError(null);
     setGeneratingDemandSpaces(phaseId, true);
+
+    // Create AbortController for this request
+    const controller = new AbortController();
+    abortControllersRef.current.demandSpaces[phaseId] = controller;
+
+    // On the Informed route, ground generation in the classified
+    // problems that touch this phase. Hypothesis Landscape generation
+    // ignores this field and behaves exactly as before.
+    const informedProblems = isInformedRoute
+      ? informedProblemsByPhase.get(phaseId) || []
+      : undefined;
 
     try {
       const response = await fetch('/api/generate-demand-spaces', {
@@ -1709,7 +1928,10 @@ export default function WorkspacePage() {
           input: model.input,
           journeyPhase: phase,
           apiKey,
+          informedProblems,
+          prioritiseProblemIds: opts?.prioritiseProblemIds,
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -1718,24 +1940,205 @@ export default function WorkspacePage() {
       }
 
       const data = await response.json();
-      setDemandSpaces(phaseId, data.demandSpaces);
+      let combined = data.demandSpaces as Array<{
+        label: string;
+        jobToBeDone: string;
+        description?: string;
+        sourceProblemIds?: string[];
+      }>;
+
+      // Coverage enforcement (Informed route only): if the first pass
+      // didn't tag every supplied problem into some demand space's
+      // sourceProblemIds, fire one surgical retry with the missing ids
+      // as `prioritiseProblemIds`. Merge the additional spaces back in
+      // before persisting. Capped at 1 retry to bound token spend.
+      if (
+        isInformedRoute &&
+        informedProblems &&
+        informedProblems.length > 0 &&
+        !controller.signal.aborted
+      ) {
+        const covered = new Set<string>();
+        for (const ds of combined) {
+          for (const pid of ds.sourceProblemIds || []) covered.add(pid);
+        }
+        const missing = informedProblems
+          .map((p) => p.id)
+          .filter((id) => !covered.has(id));
+        if (missing.length > 0) {
+          try {
+            const retry = await fetch('/api/generate-demand-spaces', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                input: model.input,
+                journeyPhase: phase,
+                apiKey,
+                informedProblems,
+                prioritiseProblemIds: missing,
+              }),
+              signal: controller.signal,
+            });
+            if (retry.ok) {
+              const retryData = await retry.json();
+              if (Array.isArray(retryData.demandSpaces)) {
+                combined = [...combined, ...retryData.demandSpaces];
+              }
+            } else {
+              // Retry failed — log and accept partial coverage rather
+              // than failing the whole generation.
+              console.warn(
+                `[informed] coverage retry for phase ${phaseId} failed; persisting partial coverage. Missing: ${missing.length}`
+              );
+            }
+          } catch (retryErr) {
+            if (!(retryErr instanceof Error && retryErr.name === 'AbortError')) {
+              console.warn(`[informed] coverage retry threw:`, retryErr);
+            }
+          }
+        }
+      }
+
+      setDemandSpaces(phaseId, combined);
     } catch (err) {
+      // Don't show error if request was aborted
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setGeneratingDemandSpaces(phaseId, false);
+      delete abortControllersRef.current.demandSpaces[phaseId];
     }
-  }, [model, apiKey, setDemandSpaces, setGeneratingDemandSpaces]);
+  }, [model, apiKey, isInformedRoute, informedProblemsByPhase, setDemandSpaces, setGeneratingDemandSpaces]);
+
+  // Cross-cutting demand-space silo (Informed Landscape only). Generates
+  // 4-8 systemic JTBDs that address problems with no specific phase.
+  const handleGenerateCrossCuttingDemandSpaces = useCallback(
+    async (opts?: { prioritiseProblemIds?: string[] }) => {
+      if (!model || !apiKey) return;
+      if (!isInformedRoute) return;
+      if (informedProblemsCrossCutting.length === 0) return;
+
+      setError(null);
+      setGeneratingCrossCuttingDemandSpaces(true);
+
+      const activeVariant = (model.informedVariants || []).find((v) => v.isActive);
+
+      try {
+        const response = await fetch('/api/generate-cross-cutting-demand-spaces', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            input: model.input,
+            apiKey,
+            crossCuttingProblems: informedProblemsCrossCutting,
+            prioritiseProblemIds: opts?.prioritiseProblemIds,
+            variantLabel: activeVariant?.label,
+          }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to generate cross-cutting demand spaces');
+        }
+
+        const data = await response.json();
+        let combined = data.demandSpaces as Array<{
+          label: string;
+          jobToBeDone: string;
+          description?: string;
+          sourceProblemIds?: string[];
+        }>;
+
+        // Coverage enforcement: if any cross-cutting problem isn't
+        // referenced in the first pass, fire one surgical retry with
+        // the missing ids prioritised, then merge.
+        const covered = new Set<string>();
+        for (const ds of combined) {
+          for (const pid of ds.sourceProblemIds || []) covered.add(pid);
+        }
+        const missing = informedProblemsCrossCutting
+          .map((p) => p.id)
+          .filter((id) => !covered.has(id));
+        if (missing.length > 0) {
+          try {
+            const retry = await fetch('/api/generate-cross-cutting-demand-spaces', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                input: model.input,
+                apiKey,
+                crossCuttingProblems: informedProblemsCrossCutting,
+                prioritiseProblemIds: missing,
+                variantLabel: activeVariant?.label,
+              }),
+            });
+            if (retry.ok) {
+              const retryData = await retry.json();
+              if (Array.isArray(retryData.demandSpaces)) {
+                combined = [...combined, ...retryData.demandSpaces];
+              }
+            } else {
+              console.warn(
+                `[informed] cross-cutting coverage retry failed; persisting partial. Missing: ${missing.length}`
+              );
+            }
+          } catch (retryErr) {
+            console.warn('[informed] cross-cutting retry threw:', retryErr);
+          }
+        }
+
+        setCrossCuttingDemandSpaces(combined);
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setGeneratingCrossCuttingDemandSpaces(false);
+      }
+    },
+    [
+      model,
+      apiKey,
+      isInformedRoute,
+      informedProblemsCrossCutting,
+      setCrossCuttingDemandSpaces,
+      setGeneratingCrossCuttingDemandSpaces,
+    ]
+  );
 
   const handleGenerateCircumstances = useCallback(async (demandSpaceId: string) => {
     if (!model || !apiKey) return;
-    const demandSpace = model.demandSpaces.find(ds => ds.id === demandSpaceId);
+    // Lookup in both per-phase and cross-cutting buckets. Cross-cutting
+    // demand spaces don't have a real phase; we synthesise a virtual
+    // "systemic" phase so the generate-circumstances route can keep its
+    // existing journeyPhase contract.
+    const demandSpace =
+      model.demandSpaces.find((ds) => ds.id === demandSpaceId) ||
+      (model.crossCuttingDemandSpaces || []).find((ds) => ds.id === demandSpaceId);
     if (!demandSpace) return;
 
-    const phase = model.journeyPhases.find(p => p.id === demandSpace.journeyPhaseId);
+    const isCrossCutting = demandSpace.scope === 'cross-cutting';
+    const phase = isCrossCutting
+      ? ({
+          id: '__cross_cutting__',
+          journeyId: '',
+          label: 'Cross-cutting (systemic)',
+          description:
+            'Systemic motivation that cuts across the entire customer journey. Not bound to any single phase — frame the circumstance at an org / governance / data / brand / martech level rather than a per-phase use case.',
+          trigger: '',
+          order: 0,
+          source: 'ai' as const,
+        } as JourneyPhase)
+        : model.journeyPhases.find((p) => p.id === demandSpace.journeyPhaseId);
     if (!phase) return;
 
     setError(null);
     setGeneratingCircumstances(demandSpaceId, true);
+
+    // Create AbortController for this request
+    const controller = new AbortController();
+    abortControllersRef.current.circumstances[demandSpaceId] = controller;
 
     try {
       const response = await fetch('/api/generate-circumstances', {
@@ -1747,6 +2150,7 @@ export default function WorkspacePage() {
           demandSpace,
           apiKey,
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -1757,9 +2161,14 @@ export default function WorkspacePage() {
       const data = await response.json();
       setCircumstances(demandSpaceId, data.circumstances);
     } catch (err) {
+      // Don't show error if request was aborted
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setGeneratingCircumstances(demandSpaceId, false);
+      delete abortControllersRef.current.circumstances[demandSpaceId];
     }
   }, [model, apiKey, setCircumstances, setGeneratingCircumstances]);
 
@@ -1838,6 +2247,10 @@ export default function WorkspacePage() {
     resetLandscapeForRegen(activeJourney.id);
     setGeneratingPhases(true);
 
+    // Create AbortController for this request
+    const controller = new AbortController();
+    abortControllersRef.current.phases = controller;
+
     try {
       const response = await fetch('/api/generate-journey-phases', {
         method: 'POST',
@@ -1851,6 +2264,7 @@ export default function WorkspacePage() {
             jtbdBlueprint: activeJourney.jtbdBlueprint,
           },
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -1860,11 +2274,16 @@ export default function WorkspacePage() {
 
       const data = await response.json();
       setJourneyPhases(activeJourney.id, data.journeyPhases);
-      setCurrentStep('landscape');
+      setCurrentStep('evidenced-landscape');
     } catch (err) {
+      // Don't show error if request was aborted
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Regeneration failed');
     } finally {
       setGeneratingPhases(false);
+      abortControllersRef.current.phases = undefined;
     }
   }, [model, apiKey, activeJourney, resetLandscapeForRegen, setGeneratingPhases, setJourneyPhases, setCurrentStep]);
 
@@ -1886,6 +2305,11 @@ export default function WorkspacePage() {
 
     setError(null);
     setGeneratingPhases(true);
+
+    // Create AbortController for this request
+    const controller = new AbortController();
+    abortControllersRef.current.phases = controller;
+
     try {
       const response = await fetch('/api/generate-journey-phases', {
         method: 'POST',
@@ -1898,6 +2322,7 @@ export default function WorkspacePage() {
             jtbdBlueprint: journey.jtbdBlueprint,
           },
         }),
+        signal: controller.signal,
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -1909,9 +2334,14 @@ export default function WorkspacePage() {
       }
       setJourneyPhases(journey.id, data.journeyPhases);
     } catch (err) {
+      // Don't show error if request was aborted
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Failed to generate journey');
     } finally {
       setGeneratingPhases(false);
+      abortControllersRef.current.phases = undefined;
     }
   }, [model, apiKey, isGeneratingPhases, setGeneratingPhases, setJourneyPhases]);
 
@@ -1949,12 +2379,27 @@ export default function WorkspacePage() {
         void handleGenerateDemandSpaces(p.id);
       }
     });
+    // On the Informed route, "Generate" also fires the cross-cutting
+    // silo so a single click produces every JTBD that addresses the
+    // diagnostics — per-phase + systemic in one cascade.
+    if (
+      isInformedRoute &&
+      informedProblemsCrossCutting.length > 0 &&
+      !isGeneratingCrossCuttingDemandSpaces &&
+      (model.crossCuttingDemandSpaces || []).length === 0
+    ) {
+      void handleGenerateCrossCuttingDemandSpaces();
+    }
   }, [
     model,
     apiKey,
     isGeneratingDemandSpaces,
     handleGenerateDemandSpaces,
     handleGeneratePhasesForJourney,
+    isInformedRoute,
+    informedProblemsCrossCutting.length,
+    isGeneratingCrossCuttingDemandSpaces,
+    handleGenerateCrossCuttingDemandSpaces,
   ]);
 
   // Auto-cascade: Generate demand spaces when AI-generated phases are added.
@@ -1963,9 +2408,19 @@ export default function WorkspacePage() {
   // Also skips phases that already have demand spaces (prevents re-generation
   // when clicking v1 in the sidebar after content already exists).
   const prevPhasesRef = useRef<string[]>([]);
+  const isInitializedPhasesRef = useRef(false);
   useEffect(() => {
     if (!model || !apiKey) return;
     const currentPhaseIds = model.journeyPhases.map(p => p.id);
+
+    // On first mount, initialize the ref with existing phases to prevent
+    // treating them as "new" when navigating back to this page
+    if (!isInitializedPhasesRef.current) {
+      prevPhasesRef.current = currentPhaseIds;
+      isInitializedPhasesRef.current = true;
+      return;
+    }
+
     const newPhaseIds = currentPhaseIds.filter(id => !prevPhasesRef.current.includes(id));
     prevPhasesRef.current = currentPhaseIds;
 
@@ -1982,11 +2437,27 @@ export default function WorkspacePage() {
 
   // Auto-cascade: Generate circumstances when demand spaces are added.
   // Skips demand spaces that already have circumstances (prevents re-generation
-  // when clicking v1 in the sidebar after content already exists).
+  // when clicking v1 in the sidebar after content already exists). Tracks
+  // both per-phase and cross-cutting demand spaces in the same pass —
+  // both shapes own their circumstances by demandSpaceId.
   const prevSpacesRef = useRef<string[]>([]);
+  const isInitializedSpacesRef = useRef(false);
   useEffect(() => {
     if (!model || !apiKey) return;
-    const currentSpaceIds = model.demandSpaces.map(ds => ds.id);
+    const allSpaces = [
+      ...model.demandSpaces,
+      ...(model.crossCuttingDemandSpaces || []),
+    ];
+    const currentSpaceIds = allSpaces.map((ds) => ds.id);
+
+    // On first mount, initialize the ref with existing spaces to prevent
+    // treating them as "new" when navigating back to this page
+    if (!isInitializedSpacesRef.current) {
+      prevSpacesRef.current = currentSpaceIds;
+      isInitializedSpacesRef.current = true;
+      return;
+    }
+
     const newSpaceIds = currentSpaceIds.filter(id => !prevSpacesRef.current.includes(id));
     prevSpacesRef.current = currentSpaceIds;
 
@@ -1997,7 +2468,13 @@ export default function WorkspacePage() {
         handleGenerateCircumstances(spaceId);
       }
     });
-  }, [model?.demandSpaces, apiKey, isGeneratingCircumstances, handleGenerateCircumstances, model]);
+  }, [model?.demandSpaces, model?.crossCuttingDemandSpaces, apiKey, isGeneratingCircumstances, handleGenerateCircumstances, model]);
+
+  // Auto-cascade: Generate cross-cutting demand spaces on the Informed
+  // Cross-cutting silo — DOES NOT auto-cascade. The strategist must
+  // click "Generate" on the Cross-cutting JTBDs band, mirroring how
+  // per-journey generation is also explicit. This avoids burning tokens
+  // before the user has reviewed the diagnostics.
 
   // Auto-expand cards when generation completes
   const prevGeneratingRef = useRef<Record<string, boolean>>({});
@@ -2014,7 +2491,7 @@ export default function WorkspacePage() {
   }, [isGeneratingCircumstances, model]);
 
   // Auto-generate persona mappings when all circumstances are done
-  const prevGenerationCompleteRef = useRef(false);
+  const prevGenerationCompleteRef = useRef(isGenerationComplete);
   useEffect(() => {
     // Only trigger when generation just completed (transition from false to true)
     if (isGenerationComplete && !prevGenerationCompleteRef.current) {
@@ -2114,81 +2591,120 @@ export default function WorkspacePage() {
 
   return (
     <div className="h-screen overflow-hidden" style={{ background: 'var(--bg-0)' }}>
-      <div className="sticky top-0 z-50">
-        <TopBar
-          left={model.input.industry || 'Workspace'}
-          onOpenTweaks={() => setTweaksOpen(true)}
-          apiKey={apiKey}
-          onApiKeyChange={handleApiKeyChange}
-          versionLabel={versionLabel}
-          versionTone={versionTone}
-          right={
-            <>
-              <a href="/" className="btn btn--ghost btn--sm">
-                <ArrowLeft size={13} /> Brief
-              </a>
-              <button className="btn btn--soft btn--sm">
-                <Download size={13} /> Export
-              </button>
-            </>
-          }
-        />
-        <StepProgress
-          currentStep="landscape"
-          modelId={model.id}
-          signalsCount={signalsCount}
-          hasDiscoveryBundle={hasBundle}
-        />
-        <JourneyTabs
-          journeys={journeys}
-          activeJourneyId={activeJourneyId}
-          setActiveJourneyId={setActiveJourneyId}
-          phaseCountByJourney={phaseCountByJourney}
-          generatingJourneyId={isGeneratingPhases ? activeJourneyId : null}
-          needsGenerationByJourney={needsGenerationByJourney}
-          onGenerateJourney={(jid) => {
-            if (jid !== activeJourneyId) setActiveJourneyId(jid);
-            handleGenerateJourney(jid);
-          }}
-          canGenerate={Boolean(apiKey) && !isGeneratingPhases}
-        />
-        {journeys.length === 1 && activeJourney?.jtbdBlueprint ? (
-          <div
-            className="px-4 py-2 text-[11px] leading-snug"
-            style={{
-              background: 'var(--bg-1)',
-              borderBottom: '1px solid var(--border-1)',
-              color: 'var(--fg-2)',
+      {!fullscreen && (
+        <div className="fixed top-0 left-0 right-0 z-50" style={{ right: 'var(--jg-rail-w, 56px)' }}>
+          {/* Pane 1: Top Header (Logo + 7-Step Progress + API Key + Tweaks) */}
+          <Pane1_TopHeader
+            industry={model.input.industry || 'Workspace'}
+            apiKey={apiKey}
+            onApiKeyChange={handleApiKeyChange}
+            onOpenTweaks={() => setTweaksOpen(true)}
+            signalsCount={signalsCount}
+            hasDiscoveryBundle={hasBundle}
+            modelId={model.id}
+            hasJourneyPhases={model.journeyPhases.length > 0}
+            hasDiagnostics={hasDiagnostics}
+            activeStep={isInformedRoute ? 'informed-landscape' : 'hypothesis-landscape'}
+          />
+
+          {/* Variant strip — sits between top header and journey tabs.
+              On `/model/[id]` we show Hypothesis variants (brief/research
+              blends). On `/model/[id]/informed-landscape` we swap in the
+              Informed variants bar (problem-driven blends). Both write
+              into `model.journeyPhases` via their respective store
+              actions, with the bidirectional invariant enforced in the
+              store: only one variant is "live" across both arrays. */}
+          {isInformedRoute ? (
+            <InformedVariantsBar
+              model={model}
+              apiKey={apiKey}
+              variants={model.informedVariants || []}
+              problems={informedProblemsPayload}
+              existingPhases={model.journeyPhases}
+              onAddVariant={(v) => addInformedVariant(v)}
+              onActivateVariant={setActiveInformedVariant}
+              onRemoveVariant={removeInformedVariant}
+              onError={setError}
+            />
+          ) : (
+            <HypothesisVariantsBar
+              model={model}
+              apiKey={apiKey}
+              variants={model.hypothesisVariants || []}
+              onAddVariant={(v) => addHypothesisVariant(v)}
+              onActivateVariant={setActiveHypothesisVariant}
+              onRemoveVariant={removeHypothesisVariant}
+              onError={setError}
+            />
+          )}
+
+          {/* Pane 2: Journey Folder Tabs */}
+          <Pane2_JourneyFolderTabs
+            journeys={journeys}
+            activeJourneyId={activeJourneyId}
+            setActiveJourneyId={setActiveJourneyId}
+            phaseCountByJourney={phaseCountByJourney}
+            generatingJourneyId={isActiveJourneyGenerating ? activeJourneyId : null}
+            needsGenerationByJourney={needsGenerationByJourney}
+            onGenerateJourney={(jid) => {
+              if (jid !== activeJourneyId) setActiveJourneyId(jid);
+              handleGenerateJourney(jid);
             }}
-          >
-            <span
-              className="font-black uppercase tracking-widest mr-2"
-              style={{ color: 'var(--fg-3)' }}
-            >
-              {activeJourney.name || 'Journey'} · JTBD
-            </span>
-            <span style={{ color: 'var(--fg-2)' }}>{activeJourney.jtbdBlueprint}</span>
-          </div>
-        ) : null}
-      </div>
+            canGenerate={Boolean(apiKey) && !isGeneratingPhases}
+          />
+
+          {/* Panes 3 & 4: Unified Workspace Container */}
+          <Pane3and4_WorkspaceContainer
+            activeJourneyName={activeJourney?.name || 'Journey'}
+            totals={totals}
+            isGenerating={isActiveJourneyGenerating}
+            onStopGeneration={handleStopAllGeneration}
+            onToggleFullscreen={() => setFullscreen(!fullscreen)}
+            fullscreen={fullscreen}
+            onExpandAll={expandAll}
+            onCollapseAll={collapseAll}
+            onRefine={handleRefineWithDiscovery}
+            refineEnabled={hasBundle}
+            refineTitle={refineTitle}
+            refineIsRunning={isGeneratingPhases}
+            onGenerateJourney={() => activeJourney && handleGenerateJourney(activeJourney.id)}
+            canGenerate={Boolean(apiKey) && !isGeneratingPhases}
+            phases={displayPhases}
+            activePhase={activePhase}
+            setActivePhase={setActivePhase}
+            onZoomToPhase={zoomToPhase}
+          />
+        </div>
+      )}
 
       <main
         className="fixed left-0 bottom-0 overflow-hidden"
         style={{
-          // When a journey header (multi-journey tab strip OR single-journey
-          // JTBD subtitle) is rendered, nudge main down so the sticky header
-          // doesn't overlap the PhaseRail. Increased offset for multi-journey
-          // to account for taller JourneyTabs component.
-          top:
-            journeys.length > 1
-              ? 200
-              : (journeys.length === 1 && activeJourney?.jtbdBlueprint)
-              ? 166
-              : 110,
+          // Folder tab layout heights:
+          // Pane 1 (48px) + variants bar (~36px) + folder tabs (~50px) + workspace container (~145px) = ~279px
+          // In fullscreen mode, set top to 0 to hide all panes.
+          top: fullscreen ? 0 : 279,
           right: 'var(--jg-rail-w, 56px)',
           paddingTop: displayPersonas.length > 0 ? '50px' : '0',
         }}
       >
+        {/* Full-screen close button */}
+        {fullscreen && (
+          <button
+            onClick={() => setFullscreen(false)}
+            className="fixed top-4 right-[calc(var(--jg-rail-w,56px)+16px)] z-50 flex items-center gap-2 px-4 py-2 text-[11px] font-bold rounded-xl border transition-all hover:scale-105"
+            style={{
+              background: 'var(--bg-1)',
+              borderColor: 'var(--border-2)',
+              color: 'var(--fg-1)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            }}
+            title="Exit full screen"
+          >
+            <X size={14} /> EXIT FULL SCREEN
+          </button>
+        )}
+
         {/* Error banner */}
         {error && (
           <div className="absolute top-0 left-0 right-0 z-30 p-3 bg-[var(--danger)]/10 border-b border-[var(--danger)]/30 text-sm text-[var(--danger)] flex items-center justify-between">
@@ -2207,22 +2723,28 @@ export default function WorkspacePage() {
           enabled={isGenerationComplete && model.personaMappings.length > 0}
         />
 
-        {/* Phase rail */}
-        <PhaseRail
-          phases={displayPhases}
-          activePhase={activePhase}
-          setActivePhase={setActivePhase}
-          onZoomToPhase={zoomToPhase}
-          onRefine={handleRefineWithDiscovery}
-          refineEnabled={hasBundle}
-          refineTitle={refineTitle}
-          refineIsRunning={isGeneratingPhases}
-          onExpandAll={expandAll}
-          onCollapseAll={collapseAll}
-          isGenerating={isAnyGenerating}
-          onStopGeneration={stopAllGeneration}
-          totals={totals}
-        />
+        {/* Cross-cutting JTBDs band — Informed Landscape only.
+            Sits at the top of the canvas as a single collapsible panel.
+            The wrapper is pointer-events transparent so the canvas can
+            still be panned in the gap around the band. */}
+        {isInformedRoute &&
+          ((model.crossCuttingDemandSpaces || []).length > 0 ||
+            informedProblemsCrossCutting.length > 0) && (
+            <div className="absolute top-2 left-3 right-3 z-30 max-h-[70%] overflow-y-auto pointer-events-none">
+              <div className="pointer-events-auto">
+                <CrossCuttingJTBDsBand
+                  modelId={model.id}
+                  demandSpaces={model.crossCuttingDemandSpaces || []}
+                  circumstances={model.circumstances}
+                  problemsById={problemsById}
+                  crossCuttingProblemCount={informedProblemsCrossCutting.length}
+                  isGenerating={isGeneratingCrossCuttingDemandSpaces}
+                  isGeneratingCircumstances={isGeneratingCircumstances}
+                  onGenerate={() => handleGenerateCrossCuttingDemandSpaces()}
+                />
+              </div>
+            </div>
+          )}
 
         {/* Canvas */}
         <div
@@ -2267,106 +2789,27 @@ export default function WorkspacePage() {
                 personaColor={activePersonaColor}
                 highlightedCircumstanceIds={relatedCircumstanceIds}
                 onAddDemandSpace={handleAddDemandSpace}
+                renderProvenance={
+                  isInformedRoute
+                    ? (space) => {
+                        const ids = space.sourceProblemIds || [];
+                        if (ids.length === 0) return null;
+                        const provenanceProblems = ids
+                          .map((id) => problemsById.get(id))
+                          .filter((p): p is InformedProblemPayload => Boolean(p));
+                        if (provenanceProblems.length === 0) return null;
+                        return (
+                          <ProblemProvenanceChip
+                            problems={provenanceProblems}
+                            modelId={model.id}
+                          />
+                        );
+                      }
+                    : undefined
+                }
               />
             ))}
           </div>
-
-          {/* Empty-state CTA — shown whenever the active journey has no
-              demand spaces yet, whether or not phases are preloaded from
-              the brief. This matches the Disney experience (no phases →
-              big centered CTA) for Dubai-style briefs where phases are
-              preloaded from the input (Arrival / Transit / Departure) but
-              demand spaces haven't been generated. Lives outside the
-              pan/zoom transform so it stays centered on screen. */}
-          {activeJourney &&
-            needsGenerationByJourney[activeJourney.id] &&
-            !isGeneratingPhases &&
-            !activeJourneyPhases.some((p) => isGeneratingDemandSpaces[p.id]) && (
-            <div
-              className="absolute inset-0 z-40 grid place-items-center p-8 pointer-events-none"
-              style={{ paddingTop: '120px' }}
-            >
-              <div
-                className="max-w-md text-center p-8 rounded-2xl pointer-events-auto"
-                style={{
-                  background: 'var(--bg-1)',
-                  border: '1px solid var(--border-1)',
-                  boxShadow: 'var(--shadow-lg)',
-                }}
-              >
-                <div
-                  className="inline-flex w-12 h-12 rounded-xl items-center justify-center mb-4"
-                  style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-                >
-                  <Sparkles size={22} />
-                </div>
-                <div className="text-lg font-extrabold mb-1" style={{ color: 'var(--fg-1)' }}>
-                  Generate the {activeJourney.name || 'journey'}
-                </div>
-                {activeJourney.jtbdBlueprint ? (
-                  <div className="text-sm mb-2" style={{ color: 'var(--fg-2)' }}>
-                    <span className="opacity-70">JTBD · </span>
-                    {activeJourney.jtbdBlueprint}
-                  </div>
-                ) : (
-                  <div className="text-sm mb-2" style={{ color: 'var(--fg-3)' }}>
-                    No JTBD blueprint set — we&apos;ll infer phases from the brief alone.
-                  </div>
-                )}
-                {displayPhases.length > 0 && (
-                  <div className="text-[11px] mb-5" style={{ color: 'var(--fg-3)' }}>
-                    Phases preloaded from the brief — generating will fill each with demand spaces.
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleGenerateJourney(activeJourney.id)}
-                  disabled={!apiKey}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black tracking-widest uppercase transition-all"
-                  style={{
-                    background: apiKey ? 'var(--accent)' : 'var(--bg-3)',
-                    color: apiKey ? 'var(--accent-fg)' : 'var(--fg-3)',
-                    cursor: apiKey ? 'pointer' : 'not-allowed',
-                    opacity: apiKey ? 1 : 0.6,
-                  }}
-                >
-                  <Zap size={14} /> Generate this journey
-                </button>
-                {!apiKey && (
-                  <div className="text-[11px] mt-3" style={{ color: 'var(--fg-3)' }}>
-                    Add your OpenAI key in the top bar to enable.
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* In-flight generation state — replaces the empty CTA with a
-              spinner card while /api/generate-journey-phases is running. */}
-          {displayPhases.length === 0 && activeJourney && isGeneratingPhases && (
-            <div className="absolute inset-0 z-40 grid place-items-center p-8 pointer-events-none" style={{ paddingTop: '120px' }}>
-              <div
-                className="max-w-md text-center p-6 rounded-2xl"
-                style={{
-                  background: 'var(--bg-1)',
-                  border: '1px solid var(--border-1)',
-                  boxShadow: 'var(--shadow-lg)',
-                }}
-              >
-                <Loader2
-                  size={22}
-                  className="animate-spin mx-auto mb-3"
-                  style={{ color: 'var(--accent)' }}
-                />
-                <div className="text-sm font-bold" style={{ color: 'var(--fg-1)' }}>
-                  Generating the {activeJourney.name || 'journey'}…
-                </div>
-                <div className="text-xs mt-1" style={{ color: 'var(--fg-3)' }}>
-                  Synthesizing phases, demand spaces, and circumstances.
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Floating UI */}
           <Minimap
